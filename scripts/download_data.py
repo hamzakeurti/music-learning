@@ -6,7 +6,7 @@ import musicnet
 
 import torch
 
-root = './../musicnet'
+root = 'home/hamza/data/musicnet'
 
 
 window = 16384
