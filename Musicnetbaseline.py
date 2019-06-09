@@ -87,9 +87,6 @@ try:
                 loss.backward()
                 optimizer.step()
                 model.average_iterates()
-                if i%1000==0:
-                    print(i)
-                    print(loss)
             t1 = time()
             avgp, loss = 0., 0.
             yground = torch.FloatTensor(batch_size*len(test_loader), m)

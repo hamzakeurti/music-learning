@@ -23,7 +23,7 @@ def create_filters(d,k,low=50,high=6000):
 
 
 class Model(torch.nn.Module):
-    def __init__(self, avg=.9998,stride=512,regions=25,d=4096,k=500,m=100):
+    def __init__(self, avg=.9998,stride=512,regions=25,d=4096,k=500,m=128):
         super(Model, self).__init__()
         
         wsin,wcos = create_filters(d,k)
