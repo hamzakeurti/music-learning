@@ -18,6 +18,7 @@ from model import Model
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--mmap',default=0,type=int)
+parser.add_argument('--multi',default=0,type=int)
 parser.add_argument('--batch_size',default=100,type=int)
 args = parser.parse_args()
 
@@ -33,6 +34,11 @@ except OSError as e:
 
 os.environ['CUDA_DEVICE_ORDER']='PCI_BUS_ID'   # see issue #152
 os.environ['CUDA_VISIBLE_DEVICES']='1'
+def worker_init(args):
+    signal.signal(signal.SIGINT, signal.SIG_IGN) # ignore signals so parent can handle them
+    np.random.seed(os.getpid() ^ int(time())) # approximately random seed for workers
+
+kwargs = {'num_workers': 4, 'pin_memory': True, 'worker_init_fn': worker_init} if args.multi==1 else {}
 
 m = 128
 k = 500
@@ -46,8 +52,8 @@ regions = int(1 + (window - d)/stride)
 mmap=True if args.mmap==1 else False
 train_set = musicnet.MusicNet(root=root, train=True, window=window, mmap=mmap)#, pitch_shift=5, jitter=.1)
 test_set = musicnet.MusicNet(root=root, train=False, window=window, epoch_size=5000,mmap = mmap)
-train_loader = torch.utils.data.DataLoader(dataset=train_set,batch_size=batch_size)
-test_loader = torch.utils.data.DataLoader(dataset=test_set,batch_size=batch_size)
+train_loader = torch.utils.data.DataLoader(dataset=train_set,batch_size=batch_size,**kwargs)
+test_loader = torch.utils.data.DataLoader(dataset=test_set,batch_size=batch_size,**kwargs)
 
 
 def L(y_hat, y):
