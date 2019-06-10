@@ -23,8 +23,8 @@ parser.add_argument('--batch_size',default=100,type=int)
 parser.add_argument('--mode', default='hybrid',type=str,choices=['hybrid','instruments','notes'])
 parser.add_argument('--data_reload',default=0,type=int,choices=[0,1])
 parser.add_argument('--stft_size',default= 512)
+parser.add_argument('--visible_device',default='1',type=str)
 args = parser.parse_args()
-
 
 root = './musicnet'
 checkpoint_path = './checkpoints'
@@ -36,7 +36,7 @@ except OSError as e:
         raise
 
 os.environ['CUDA_DEVICE_ORDER']='PCI_BUS_ID'   # see issue #152
-os.environ['CUDA_VISIBLE_DEVICES']='1'
+os.environ['CUDA_VISIBLE_DEVICES']=args.visible_device
 def worker_init(args):
     signal.signal(signal.SIGINT, signal.SIG_IGN) # ignore signals so parent can handle them
     np.random.seed(os.getpid() ^ int(time())) # approximately random seed for workers
@@ -75,7 +75,7 @@ def averages(model):
     for parm, orig in zip(model.parameters(), orig_parms):
         parm.data.copy_(orig)
 
-model = Model()
+model = Model().cuda()
 print(model)
 loss_history = []
 avgp_history = []

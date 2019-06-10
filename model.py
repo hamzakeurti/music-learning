@@ -81,20 +81,20 @@ class Model(torch.nn.Module):
         self.avgpool = nn.AvgPool2d(kernel_size=3,stride=2)
 
 
-        self.conv1 = nn.Conv2d(1,96,3,padding=1)
-        self.conv2 =nn.Conv2d(96,256,5,stride=2)
-        self.conv3 = nn.Conv2d(256,512,3,padding=1)
-        self.conv4 = nn.Conv2d(512,1024,3,padding=1) 
-        self.conv5 = nn.Conv2d(1024,512,3,padding=1)
+        self.conv1 = nn.Conv2d(1,16,3,padding=1)
+        self.conv2 =nn.Conv2d(16,32,5,stride=2)
+        self.conv3 = nn.Conv2d(32,64,3,padding=1)
+        self.conv4 = nn.Conv2d(64,128,3,padding=1) 
+        self.conv5 = nn.Conv2d(128,64,3,padding=1)
 
-        self.linear = nn.Linear(43008,m)
+        self.linear = nn.Linear(5376,m)
     def forward(self, x):
         fft = torch.stft(x,self.stft)
         # batch_size * N * T * 2
         afftpow2 = fft[:,:,:,0] **2 + fft[:,:,:,1]
-
+        x = afftpow2.unsqueeze(1)
         # batch_size * N * T
-        x = F.relu(self.conv1(afftpow2))
+        x = F.relu(self.conv1(x))
         x = self.maxpool(x)
         x =  F.relu(self.conv2(x))
         x = self.maxpool(x)
@@ -102,7 +102,7 @@ class Model(torch.nn.Module):
         x = F.relu(self.conv4(x))
         x = F.relu(self.conv5(x))
         x = self.avgpool(x)
-        x = x.reshape(self.batch_size, 43008)
+        x = x.reshape(self.batch_size,5376)
         return self.linear(x)
     
     def average_iterates(self):
