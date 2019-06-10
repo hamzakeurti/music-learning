@@ -97,7 +97,7 @@ class Model(torch.nn.Module):
 
 
 class ToneNN(torch.nn.Module):
-    def __init__(self,frequency_span,time_span,conv1_channels,conv2_channels,conv3_channels,conv_size,pool_size,num_features,m=128):
+    def __init__(self,conv1_channels,conv2_channels,conv3_channels,conv_size,pool_size,num_features,m=128):
         super(ToneNN,self).__init__()
 
         self.frequency_span = frequency_span
@@ -115,6 +115,8 @@ class ToneNN(torch.nn.Module):
 
     def forward(self,audio):
         
+        audio = audio[:,None,:,:]
+
         conv_output1 = self.conv1(audio)
         output1 = F.relu(nn.MaxPool2d(self.pool_size)(conv_output1))
         
