@@ -85,7 +85,7 @@ class Model(torch.nn.Module):
         self.conv2 =nn.Conv2d(basechannel,basechannel*2,5,stride=2)
         self.conv3 = nn.Conv2d(basechannel*2,basechannel*4,3,padding=1)
         self.conv4 = nn.Conv2d(basechannel*4,basechannel*8,3,padding=1) 
-        self.conv5 = nn.Conv2d(basechannel*8,basechannel*8,3,padding=1)
+        self.conv5 = nn.Conv2d(basechannel*8,basechannel*4,3,padding=1)
         self.inshape = 336*basechannel
         self.linear = nn.Linear(336*basechannel,m)
     def forward(self, x):

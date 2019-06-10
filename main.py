@@ -26,7 +26,7 @@ parser.add_argument('--stft_size',default= 512)
 parser.add_argument('--visible_device',default='1',type=str)
 parser.add_argument('--lr',default=0.001,type=float)
 parser.add_argument('--mm',default=0.95,type=float)
-parser.add_argument('--optim',default='SGD',type=float)
+parser.add_argument('--optim',default='SGD',type=str)
 parser.add_argument('--basechannel',default=16,type=int)
 parser.add_argument('--l1norm',default=0.,type=float)
 args = parser.parse_args()
@@ -93,7 +93,7 @@ if args.data_reload==1:
 
 optimizer = torch.optim.SGD(model.parameters(), lr = args.lr, momentum=args.mm)
 if args.optim=='Adam':
-    optimizer = torch.optim.Adam(model.parameters(), lr = args.lr, momentum=args.mm)
+    optimizer = torch.optim.Adam(model.parameters(), lr = args.lr)
 
 try:
     with train_set, test_set:
