@@ -54,9 +54,8 @@ class Baseline(torch.nn.Module):
         for parm, pavg in zip(self.parameters(), self.averages):
             pavg.mul_(self.avg).add_(1.-self.avg, parm.data)
 
-
 class Model(torch.nn.Module):
-    def __init__(self, avg=.9998,stride=512,regions=25,d=4096,k=500,m=128):
+    def __init__(self, avg=.9998,stride=512,regions=25,d=4096,k=500,m=128,stft=512,window=16384):
         super(Model, self).__init__()
         
         wsin,wcos = create_filters(d,k)
@@ -71,6 +70,10 @@ class Model(torch.nn.Module):
         self.regions=regions
         self.k=k
 
+        #For stft
+        self.stft=stft
+        self.N = stft//2 + 1
+        self.T = window//(4*stft) + 1
 
         self.avg = avg
         self.averages = copy.deepcopy(list(parm.data for parm in self.parameters()))
@@ -79,9 +82,11 @@ class Model(torch.nn.Module):
             self.register_buffer(name + '_avg', pavg)
     
     def forward(self, x):
-        zx = conv1d(x[:,None,:], self.wsin_var, stride=self.stride).pow(2) \
-           + conv1d(x[:,None,:], self.wcos_var, stride=self.stride).pow(2)
-        return self.linear(torch.log(zx + musicnet.epsilon).view(x.data.size()[0],self.regions*self.k))
+        fft = torch.stft(x,self.stft)
+        # batch_size * N * T * 2
+        afftpow2 = fft[:,:,:,0] **2 + fft[:,:,:,1]
+        
+        return 
     
     def average_iterates(self):
         for parm, pavg in zip(self.parameters(), self.averages):
