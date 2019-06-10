@@ -21,6 +21,7 @@ parser.add_argument('--mmap',default=1,type=int)
 parser.add_argument('--multi',default=1,type=int)
 parser.add_argument('--batch_size',default=100,type=int)
 parser.add_argument('--mode', default='hybrid',type=str,choices=['hybrid','instruments','notes'])
+parser.add_argument('--data_reload',default=0,type=int,choices=[0,1])
 args = parser.parse_args()
 
 
@@ -45,7 +46,7 @@ a = 128 if args.mode in ['hybrid','notes'] else 0
 b = 11 if args.mode in ['hybrid','instruments'] else 0
 
 m = a + b
-k = 500
+k = 500 
 d = 4096
 window = 16384
 stride = 512
@@ -77,12 +78,13 @@ model = Baseline(m=m)
 print(model)
 loss_history = []
 avgp_history = []
+if args.data_reload==1:
+    try:
+        model.load_state_dict(torch.load(os.path.join(checkpoint_path,checkpoint)))
+    except IOError as e:
+        if e.errno != errno.ENOENT:
+            raise
 
-try:
-    model.load_state_dict(torch.load(os.path.join(checkpoint_path,checkpoint)))
-except IOError as e:
-    if e.errno != errno.ENOENT:
-        raise
 optimizer = torch.optim.SGD(model.parameters(), lr=0.000001, momentum=.95)
 
 try:
