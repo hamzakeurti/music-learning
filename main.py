@@ -6,7 +6,7 @@ import musicnet2 as musicnet
 
 import torch
 from torch.autograd import Variable
-from torch.nn.functional import conv1d, mse_loss
+from torch.nn.functional import conv1d, mse_loss,l1_loss
 
 from time import time
 
@@ -28,6 +28,7 @@ parser.add_argument('--lr',default=0.001,type=float)
 parser.add_argument('--mm',default=0.95,type=float)
 parser.add_argument('--optim',default='SGD',type=float)
 parser.add_argument('--basechannel',default=16,type=int)
+parser.add_argument('--l1norm',default=0.,type=float)
 args = parser.parse_args()
 
 root = './musicnet'
@@ -68,7 +69,7 @@ test_loader = torch.utils.data.DataLoader(dataset=test_set,batch_size=batch_size
 
 def L(y_hat, y):
     # adjust for per-frame loss
-    return mse_loss(y_hat, y)*128/2.
+    return mse_loss(y_hat, y)*128/2. + args.l1norm * l1_loss(y_hat,y)
 
 @contextmanager
 def averages(model):
