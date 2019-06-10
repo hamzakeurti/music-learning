@@ -87,3 +87,31 @@ class Model(torch.nn.Module):
         for parm, pavg in zip(self.parameters(), self.averages):
             pavg.mul_(self.avg).add_(1.-self.avg, parm.data)
 
+
+class ToneNN(torch.nn.Module):
+    def __init__(self,frequency_span,time_span,conv1_channels,conv1_kernel,pool_size,conv2_channels,conv2_kernel,conv3_channels,conv3_kernel,num_features):
+        super(ToneNN,self).__init__()
+
+        self.frequency_span = frequency_span
+        self.time_span = time_span
+        
+        self.pool_size = pool_size
+        self.conv1 = nn.Conv2d(1,conv1_channels,conv1_kernel,padding = conv1_kernel/2)
+        self.conv2 = nn.Conv2d(conv1_channels,conv2_channels,conv2_kernel,padding = conv2_kernel/2)
+        self.conv3 = nn.Conv2d(conv2_channels,conv3_channels,conv3_kernel,padding = conv3_kernel/2)
+
+        self.number_features = num_features
+        self.fc = nn.Linear(in_features=self.number_features, out_features=m)
+
+    def forward(self,audio):
+        
+        conv_output1 = self.conv1(audio)
+        output1 = nn.Relu()(nn.MaxPool2d(self.pool_size)(conv_output1))
+        conv_output2 = self.conv1(pool_output1)
+        output2 = nn.Relu()(nn.MaxPool2d(self.pool_size)(conv_output1))
+        conv_output3 = self.conv1(pool_output2)
+        output3 = nn.Relu()(nn.MaxPool2d(self.pool_size)(conv_output1))
+
+        flattened = output3.view(-1)
+
+        return self.fc(flattened)
