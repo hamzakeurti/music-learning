@@ -24,7 +24,7 @@ def create_filters(d,k,low=50,high=6000):
 
 class Baseline(torch.nn.Module):
     def __init__(self, avg=.9998,stride=512,regions=25,d=4096,k=500,m=128):
-        super(Model, self).__init__()
+        super(Baseline, self).__init__()
         
         wsin,wcos = create_filters(d,k)
         with torch.cuda.device(0):
@@ -55,7 +55,7 @@ class Baseline(torch.nn.Module):
             pavg.mul_(self.avg).add_(1.-self.avg, parm.data)
 
 
-class Baseline(torch.nn.Module):
+class Model(torch.nn.Module):
     def __init__(self, avg=.9998,stride=512,regions=25,d=4096,k=500,m=128):
         super(Model, self).__init__()
         
