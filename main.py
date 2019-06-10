@@ -20,14 +20,13 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--mmap',default=1,type=int)
 parser.add_argument('--multi',default=1,type=int)
 parser.add_argument('--batch_size',default=100,type=int)
-parser.add_argument('--mode', default='hybrid',type=str,choices=['hybrid,instruments,notes'])
+parser.add_argument('--mode', default='hybrid',type=str,choices=['hybrid','instruments','notes'])
 args = parser.parse_args()
 
 
 root = './musicnet'
 checkpoint_path = './checkpoints'
-checkpoint = 'musicnet_demo.pt'
-
+checkpoint = 'musicnet_' + args.mode + '.pt'
 try:
     os.makedirs(checkpoint_path)
 except OSError as e:
