@@ -22,6 +22,7 @@ parser.add_argument('--multi',default=1,type=int)
 parser.add_argument('--batch_size',default=100,type=int)
 parser.add_argument('--mode', default='hybrid',type=str,choices=['hybrid','instruments','notes'])
 parser.add_argument('--data_reload',default=0,type=int,choices=[0,1])
+parser.add_argument('--stft_size',default= 512)
 args = parser.parse_args()
 
 
