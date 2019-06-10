@@ -29,6 +29,7 @@ parser.add_argument('--mm',default=0.95,type=float)
 parser.add_argument('--optim',default='SGD',type=str)
 parser.add_argument('--basechannel',default=16,type=int)
 parser.add_argument('--l1norm',default=0.,type=float)
+parser.add_argument('--epochs',default=50,type=int)
 args = parser.parse_args()
 
 root = './musicnet'
@@ -98,7 +99,7 @@ if args.optim=='Adam':
 try:
     with train_set, test_set:
         print('square loss\tavg prec\ttime\t\tutime')
-        for epoch in range(50):
+        for epoch in range(args.epochs):
             t = time()
             for i, (x, y) in enumerate(train_loader):
                 x, y = Variable(x.cuda(), requires_grad=False), Variable(y.cuda(), requires_grad=False)

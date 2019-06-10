@@ -6,6 +6,7 @@ from torch.nn.functional import conv1d, mse_loss
 import musicnet
 import numpy as np
 import copy
+import math
 import torch.nn.functional as F
 def create_filters(d,k,low=50,high=6000):
     x = np.linspace(0, 2*np.pi, d, endpoint=False)
