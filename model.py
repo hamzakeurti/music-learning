@@ -56,7 +56,7 @@ class Baseline(torch.nn.Module):
             pavg.mul_(self.avg).add_(1.-self.avg, parm.data)
 
 class Model(torch.nn.Module):
-    def __init__(self, avg=.9998,stride=512,regions=25,d=4096,k=500,m=128,stft=512,window=16384,batch_size=100,m=128):
+    def __init__(self, avg=.9998,stride=512,regions=25,d=4096,k=500,m=128,stft=512,window=16384,batch_size=100):
         super(Model, self).__init__()
 
         self.stride=stride
@@ -92,7 +92,7 @@ class Model(torch.nn.Module):
         fft = torch.stft(x,self.stft)
         # batch_size * N * T * 2
         afftpow2 = fft[:,:,:,0] **2 + fft[:,:,:,1]
-        
+
         # batch_size * N * T
         x = F.relu(self.conv1(afftpow2))
         x = self.maxpool(x)
