@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.autograd import Variable
 from torch.nn.functional import conv1d, mse_loss
 import musicnet
@@ -94,7 +95,7 @@ class Model(torch.nn.Module):
 
 
 class ToneNN(torch.nn.Module):
-    def __init__(self,frequency_span,time_span,conv1_channels,conv1_kernel,pool_size,conv2_channels,conv2_kernel,conv3_channels,conv3_kernel,num_features):
+    def __init__(self,frequency_span,time_span,conv1_channels,conv1_kernel,pool_size,conv2_channels,conv2_kernel,conv3_channels,conv3_kernel,num_features,m=128):
         super(ToneNN,self).__init__()
 
         self.frequency_span = frequency_span
@@ -111,11 +112,11 @@ class ToneNN(torch.nn.Module):
     def forward(self,audio):
         
         conv_output1 = self.conv1(audio)
-        output1 = nn.Relu()(nn.MaxPool2d(self.pool_size)(conv_output1))
-        conv_output2 = self.conv1(pool_output1)
-        output2 = nn.Relu()(nn.MaxPool2d(self.pool_size)(conv_output1))
-        conv_output3 = self.conv1(pool_output2)
-        output3 = nn.Relu()(nn.MaxPool2d(self.pool_size)(conv_output1))
+        output1 = F.relu(nn.MaxPool2d(self.pool_size)(conv_output1))
+        conv_output2 = self.conv1(output1)
+        output2 = F.relu(nn.MaxPool2d(self.pool_size)(conv_output2))
+        conv_output3 = self.conv1(output2)
+        output3 = F.relu(nn.MaxPool2d(self.pool_size)(conv_output3))
 
         flattened = output3.view(-1)
 
