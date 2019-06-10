@@ -79,8 +79,6 @@ class Model(torch.nn.Module):
         
         self.maxpool = nn.MaxPool2d(kernel_size=3,stride=2)
         self.avgpool = nn.AvgPool2d(kernel_size=3,stride=2)
-
-
         self.conv1 = nn.Conv2d(1,basechannel,3,padding=1)
         self.conv2 =nn.Conv2d(basechannel,basechannel*2,5,stride=2)
         self.conv3 = nn.Conv2d(basechannel*2,basechannel*4,3,padding=1)
@@ -88,6 +86,10 @@ class Model(torch.nn.Module):
         self.conv5 = nn.Conv2d(basechannel*8,basechannel*4,3,padding=1)
         self.inshape = 336*basechannel
         self.linear = nn.Linear(336*basechannel,m)
+        self.norm1 = nn.BatchNorm2d(basechannel)
+        self.norm2 = nn.BatchNorm2d(basechannel*2)
+        self.norm3 = nn.BatchNorm2d(basechannel*4)
+        self.norm4 = nn.BatchNorm2d(basechannel*8)
     def forward(self, x):
         fft = torch.stft(x,self.stft)
         # batch_size * N * T * 2
@@ -95,11 +97,15 @@ class Model(torch.nn.Module):
         x = afftpow2.unsqueeze(1)
         # batch_size * N * T
         x = F.relu(self.conv1(x))
+        x = self.norm1(x)
         x = self.maxpool(x)
         x =  F.relu(self.conv2(x))
+        x = self.norm2(x)
         x = self.maxpool(x)
         x = F.relu(self.conv3(x))
+        x = self.norm3(x)
         x = F.relu(self.conv4(x))
+        x = self.norm4(x)
         x = F.relu(self.conv5(x))
         x = self.avgpool(x)
         x = x.reshape(self.batch_size,self.inshape)
