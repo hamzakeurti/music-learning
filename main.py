@@ -69,7 +69,7 @@ def averages(model):
     for parm, orig in zip(model.parameters(), orig_parms):
         parm.data.copy_(orig)
 
-model = Baseline()
+model = Baseline(m=m)
 print(model)
 loss_history = []
 avgp_history = []
