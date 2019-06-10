@@ -117,9 +117,11 @@ class ToneNN(torch.nn.Module):
         
         conv_output1 = self.conv1(audio)
         output1 = F.relu(nn.MaxPool2d(self.pool_size)(conv_output1))
-        conv_output2 = self.conv1(output1)
+        
+        conv_output2 = self.conv2(output1)
         output2 = F.relu(nn.MaxPool2d(self.pool_size)(conv_output2))
-        conv_output3 = self.conv1(output2)
+        
+        conv_output3 = self.conv3(output2)
         output3 = F.relu(nn.MaxPool2d(self.pool_size)(conv_output3))
 
         flattened = output3.view(-1)
