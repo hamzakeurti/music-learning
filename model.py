@@ -5,7 +5,7 @@ from torch.nn.functional import conv1d, mse_loss
 import musicnet
 import numpy as np
 import copy
-
+import torch.nn.functional as F
 def create_filters(d,k,low=50,high=6000):
     x = np.linspace(0, 2*np.pi, d, endpoint=False)
     wsin = np.empty((k,1,d), dtype=np.float32)
@@ -57,14 +57,6 @@ class Baseline(torch.nn.Module):
 class Model(torch.nn.Module):
     def __init__(self, avg=.9998,stride=512,regions=25,d=4096,k=500,m=128,stft=512,window=16384):
         super(Model, self).__init__()
-        
-        wsin,wcos = create_filters(d,k)
-        with torch.cuda.device(0):
-            self.wsin_var = Variable(torch.from_numpy(wsin).cuda(), requires_grad=False)
-            self.wcos_var = Variable(torch.from_numpy(wcos).cuda(), requires_grad=False)
-        
-        self.linear = torch.nn.Linear(regions*k, m, bias=False).cuda()
-        torch.nn.init.constant(self.linear.weight, 0)
 
         self.stride=stride
         self.regions=regions
@@ -80,13 +72,23 @@ class Model(torch.nn.Module):
         for (name,parm),pavg in zip(self.named_parameters(),self.averages):
             name = name.split('.')[0]
             self.register_buffer(name + '_avg', pavg)
-    
+
+
+        self.conv1 = nn.Conv2d(1,96,3,padding=1)
+        self.pool = nn.MaxPool2d(kernel_size=3,stride=2)
+        self.conv2 =nn.Conv2d(96,256,5,stride=2)
+        self.linear = nn.Linear(100,100)
+
     def forward(self, x):
         fft = torch.stft(x,self.stft)
         # batch_size * N * T * 2
         afftpow2 = fft[:,:,:,0] **2 + fft[:,:,:,1]
-        
-        return 
+        # batch_size * N * T
+        x = F.relu(self.conv1(afftpow2))
+        x = self.pool(x)
+        x =  F.relu(self.conv2(x))
+
+        return x
     
     def average_iterates(self):
         for parm, pavg in zip(self.parameters(), self.averages):
