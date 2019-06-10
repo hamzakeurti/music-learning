@@ -56,7 +56,7 @@ class Baseline(torch.nn.Module):
             pavg.mul_(self.avg).add_(1.-self.avg, parm.data)
 
 class Model(torch.nn.Module):
-    def __init__(self, avg=.9998,stride=512,regions=25,d=4096,k=500,m=128,stft=512,window=16384):
+    def __init__(self, avg=.9998,stride=512,regions=25,d=4096,k=500,m=128,stft=512,window=16384,batch_size=100,m=128):
         super(Model, self).__init__()
 
         self.stride=stride
@@ -74,22 +74,36 @@ class Model(torch.nn.Module):
             name = name.split('.')[0]
             self.register_buffer(name + '_avg', pavg)
 
+        self.batch_size=batch_size
+
+        
+        self.maxpool = nn.MaxPool2d(kernel_size=3,stride=2)
+        self.avgpool = nn.AvgPool2d(kernel_size=3,stride=2)
+
 
         self.conv1 = nn.Conv2d(1,96,3,padding=1)
-        self.pool = nn.MaxPool2d(kernel_size=3,stride=2)
         self.conv2 =nn.Conv2d(96,256,5,stride=2)
-        self.linear = nn.Linear(100,100)
+        self.conv3 = nn.Conv2d(256,512,3,padding=1)
+        self.conv4 = nn.Conv2d(512,1024,3,padding=1) 
+        self.conv5 = nn.Conv2d(1024,512,3,padding=1)
 
+        self.linear = nn.Linear(43008,m)
     def forward(self, x):
         fft = torch.stft(x,self.stft)
         # batch_size * N * T * 2
         afftpow2 = fft[:,:,:,0] **2 + fft[:,:,:,1]
+        
         # batch_size * N * T
         x = F.relu(self.conv1(afftpow2))
-        x = self.pool(x)
+        x = self.maxpool(x)
         x =  F.relu(self.conv2(x))
-
-        return x
+        x = self.maxpool(x)
+        x = F.relu(self.conv3(x))
+        x = F.relu(self.conv4(x))
+        x = F.relu(self.conv5(x))
+        x = self.avgpool(x)
+        x = x.reshape(self.batch_size, 43008)
+        return self.linear(x)
     
     def average_iterates(self):
         for parm, pavg in zip(self.parameters(), self.averages):
