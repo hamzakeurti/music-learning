@@ -122,7 +122,7 @@ class MusicNet(data.Dataset):
             if self.m>127:
                 y[label.data[1]+shift] = 1
             if self.m==128+11:
-                y[self.m + self.instrumentmap[label.data[0]]] = 1
+                y[128 + self.instrumentmap[label.data[0]]] = 1
             if self.m==11:
                 y[self.instrumentmap[label.data[0]]] = 1
         return x,y
