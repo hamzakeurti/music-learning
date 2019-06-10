@@ -2,7 +2,7 @@ import sys,os,errno,signal,copy
 from contextlib import contextmanager
 
 import numpy as np
-import musicnet
+import musicnet2
 
 import torch
 from torch.autograd import Variable

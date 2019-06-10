@@ -46,6 +46,7 @@ class MusicNet(data.Dataset):
         self.size = epoch_size
         self.m = 128
         self.n = 11
+        self.instrumentmap =  {1:0, 7:1, 41:2, 42:3, 43:4, 44:5, 61:6, 69:7, 71:8, 72:9, 74:10}
         self.root = os.path.expanduser(root)
 
         if download:
@@ -120,8 +121,7 @@ class MusicNet(data.Dataset):
         y = np.zeros(self.m + self.n,dtype=np.float32)
         for label in self.labels[rec_id][s+scale*self.window/2]:
             y[label.data[1]+shift] = 1
-            y[label.data[0]] = 1
-
+            y[self.m + self.instrumentmap[label.data[0]]] = 1
         return x,y
 
     def __getitem__(self, index):
