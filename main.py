@@ -2,7 +2,7 @@ import sys,os,errno,signal,copy
 from contextlib import contextmanager
 
 import numpy as np
-import musicnet2
+import musicnet2 as musicnet
 
 import torch
 from torch.autograd import Variable
@@ -40,7 +40,7 @@ def worker_init(args):
 
 kwargs = {'num_workers': 4, 'pin_memory': True, 'worker_init_fn': worker_init} if args.multi==1 else {}
 
-m = 128
+m = 128 + 11
 k = 500
 d = 4096
 window = 16384
