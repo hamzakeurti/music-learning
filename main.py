@@ -14,13 +14,15 @@ import matplotlib.pyplot as plt
 
 from sklearn.metrics import average_precision_score
 import argparse
-from model import Baseline
+from model import Baseline,Model
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--mmap',default=1,type=int)
 parser.add_argument('--multi',default=1,type=int)
 parser.add_argument('--batch_size',default=100,type=int)
 parser.add_argument('--mode', default='hybrid',type=str,choices=['hybrid','instruments','notes'])
+parser.add_argument('--data_reload',default=0,type=int,choices=[0,1])
+parser.add_argument('--stft_size',default= 512)
 args = parser.parse_args()
 
 
@@ -45,7 +47,7 @@ a = 128 if args.mode in ['hybrid','notes'] else 0
 b = 11 if args.mode in ['hybrid','instruments'] else 0
 
 m = a + b
-k = 500
+k = 500 
 d = 4096
 window = 16384
 stride = 512
@@ -54,7 +56,7 @@ batch_size = args.batch_size
 regions = int(1 + (window - d)/stride)
 
 mmap=True if args.mmap==1 else False
-train_set = musicnet.MusicNet(root=root, train=True, window=window, mmap=mmap,m=m)#, pitch_shift=5, jitter=.1)
+train_set = musicnet.MusicNet(root=root, train=True, window=window, mmap=mmap,m=m,epoch_size=5000)#, pitch_shift=5, jitter=.1)
 test_set = musicnet.MusicNet(root=root, train=False, window=window, epoch_size=5000,mmap = mmap,m=m)
 train_loader = torch.utils.data.DataLoader(dataset=train_set,batch_size=batch_size,**kwargs)
 test_loader = torch.utils.data.DataLoader(dataset=test_set,batch_size=batch_size,**kwargs)
@@ -73,16 +75,17 @@ def averages(model):
     for parm, orig in zip(model.parameters(), orig_parms):
         parm.data.copy_(orig)
 
-model = Baseline(m=m)
+model = Model()
 print(model)
 loss_history = []
 avgp_history = []
+if args.data_reload==1:
+    try:
+        model.load_state_dict(torch.load(os.path.join(checkpoint_path,checkpoint)))
+    except IOError as e:
+        if e.errno != errno.ENOENT:
+            raise
 
-try:
-    model.load_state_dict(torch.load(os.path.join(checkpoint_path,checkpoint)))
-except IOError as e:
-    if e.errno != errno.ENOENT:
-        raise
 optimizer = torch.optim.SGD(model.parameters(), lr=0.000001, momentum=.95)
 
 try:
