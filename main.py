@@ -24,6 +24,10 @@ parser.add_argument('--mode', default='hybrid',type=str,choices=['hybrid','instr
 parser.add_argument('--data_reload',default=0,type=int,choices=[0,1])
 parser.add_argument('--stft_size',default= 512)
 parser.add_argument('--visible_device',default='1',type=str)
+parser.add_argument('--lr',default=0.001,type=float)
+parser.add_argument('--mm',default=0.95,type=float)
+parser.add_argument('--optim',default='SGD',type=float)
+parser.add_argument('--basechannel',default=16,type=int)
 args = parser.parse_args()
 
 root = './musicnet'
@@ -56,7 +60,7 @@ batch_size = args.batch_size
 regions = int(1 + (window - d)/stride)
 
 mmap=True if args.mmap==1 else False
-train_set = musicnet.MusicNet(root=root, train=True, window=window, mmap=mmap,m=m,epoch_size=5000)#, pitch_shift=5, jitter=.1)
+train_set = musicnet.MusicNet(root=root, train=True, window=window, mmap=mmap,m=m)#, pitch_shift=5, jitter=.1)
 test_set = musicnet.MusicNet(root=root, train=False, window=window, epoch_size=5000,mmap = mmap,m=m)
 train_loader = torch.utils.data.DataLoader(dataset=train_set,batch_size=batch_size,**kwargs)
 test_loader = torch.utils.data.DataLoader(dataset=test_set,batch_size=batch_size,**kwargs)
@@ -75,7 +79,7 @@ def averages(model):
     for parm, orig in zip(model.parameters(), orig_parms):
         parm.data.copy_(orig)
 
-model = Model().cuda()
+model = Model(m=m,basechannel = args.basechannel).cuda()
 print(model)
 loss_history = []
 avgp_history = []
@@ -86,7 +90,9 @@ if args.data_reload==1:
         if e.errno != errno.ENOENT:
             raise
 
-optimizer = torch.optim.SGD(model.parameters(), lr=0.000001, momentum=.95)
+optimizer = torch.optim.SGD(model.parameters(), lr = args.lr, momentum=args.mm)
+if args.optim=='Adam':
+    optimizer = torch.optim.Adam(model.parameters(), lr = args.lr, momentum=args.mm)
 
 try:
     with train_set, test_set:
