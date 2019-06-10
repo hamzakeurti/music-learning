@@ -17,10 +17,12 @@ import argparse
 from model import Baseline
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--mmap',default=0,type=int)
-parser.add_argument('--multi',default=0,type=int)
+parser.add_argument('--mmap',default=1,type=int)
+parser.add_argument('--multi',default=1,type=int)
 parser.add_argument('--batch_size',default=100,type=int)
+parser.add_argument('--mode', default='hybrid',type=str,choices=['hybrid,instruments,notes'])
 args = parser.parse_args()
+
 
 root = './musicnet'
 checkpoint_path = './checkpoints'
@@ -40,7 +42,10 @@ def worker_init(args):
 
 kwargs = {'num_workers': 4, 'pin_memory': True, 'worker_init_fn': worker_init} if args.multi==1 else {}
 
-m = 128 + 11
+a = 128 if args.mode in ['hybrid','notes'] else 0
+b = 11 if args.mode in ['hybrid','instruments'] else 0
+
+m = a + b
 k = 500
 d = 4096
 window = 16384
@@ -50,8 +55,8 @@ batch_size = args.batch_size
 regions = int(1 + (window - d)/stride)
 
 mmap=True if args.mmap==1 else False
-train_set = musicnet.MusicNet(root=root, train=True, window=window, mmap=mmap)#, pitch_shift=5, jitter=.1)
-test_set = musicnet.MusicNet(root=root, train=False, window=window, epoch_size=5000,mmap = mmap)
+train_set = musicnet.MusicNet(root=root, train=True, window=window, mmap=mmap,m=m)#, pitch_shift=5, jitter=.1)
+test_set = musicnet.MusicNet(root=root, train=False, window=window, epoch_size=5000,mmap = mmap,m=m)
 train_loader = torch.utils.data.DataLoader(dataset=train_set,batch_size=batch_size,**kwargs)
 test_loader = torch.utils.data.DataLoader(dataset=test_set,batch_size=batch_size,**kwargs)
 

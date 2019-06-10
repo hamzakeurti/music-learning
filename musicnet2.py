@@ -37,15 +37,14 @@ class MusicNet(data.Dataset):
     test_data, test_labels, test_tree = 'test_data', 'test_labels', 'test_tree.pckl'
     extracted_folders = [train_data,train_labels,test_data,test_labels]
 
-    def __init__(self, root, train=True, download=False, mmap=True, normalize=True, window=16384, pitch_shift=0, jitter=0., epoch_size=100000):
+    def __init__(self, root, train=True, download=False, mmap=True, normalize=True, window=16384, pitch_shift=0, jitter=0., epoch_size=100000,m=128):
         self.mmap = mmap
         self.normalize = normalize
         self.window = window
         self.pitch_shift = pitch_shift
         self.jitter = jitter
         self.size = epoch_size
-        self.m = 128
-        self.n = 11
+        self.m = m
         self.instrumentmap =  {1:0, 7:1, 41:2, 42:3, 43:4, 44:5, 61:6, 69:7, 71:8, 72:9, 74:10}
         self.root = os.path.expanduser(root)
 
@@ -120,8 +119,12 @@ class MusicNet(data.Dataset):
 
         y = np.zeros(self.m + self.n,dtype=np.float32)
         for label in self.labels[rec_id][s+scale*self.window/2]:
-            y[label.data[1]+shift] = 1
-            y[self.m + self.instrumentmap[label.data[0]]] = 1
+            if self.m>127:
+                y[label.data[1]+shift] = 1
+            if self.m==128+11:
+                y[self.m + self.instrumentmap[label.data[0]]] = 1
+            if self.m==11:
+                y[self.instrumentmap[label.data[0]]] = 1
         return x,y
 
     def __getitem__(self, index):
