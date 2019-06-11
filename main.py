@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 
 from sklearn.metrics import average_precision_score
 import argparse
-from model import Baseline,Model
+from model import Baseline,Model,Model2
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--mmap',default=1,type=int)
@@ -81,7 +81,7 @@ def averages(model):
     for parm, orig in zip(model.parameters(), orig_parms):
         parm.data.copy_(orig)
 
-model = Model(m=m,basechannel = args.basechannel).cuda()
+model = ComplexModel(m=m,basechannel = args.basechannel).cuda()
 print(model)
 loss_history = []
 avgp_history = []

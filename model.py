@@ -63,7 +63,11 @@ class Model(torch.nn.Module):
         self.stride=stride
         self.regions=regions
         self.k=k
-
+        
+        wsin,wcos = create_filters(d,k)
+        with torch.cuda.device(0):
+            self.wsin_var = Variable(torch.from_numpy(wsin).cuda(), requires_grad=False)
+            self.wcos_var = Variable(torch.from_numpy(wcos).cuda(), requires_grad=False)
         #For stft
         self.stft=stft
         self.N = stft//2 + 1
@@ -77,7 +81,6 @@ class Model(torch.nn.Module):
 
         self.batch_size=batch_size
 
-        
         self.maxpool = nn.MaxPool2d(kernel_size=3,stride=2)
         self.avgpool = nn.AvgPool2d(kernel_size=3,stride=2)
         self.conv1 = nn.Conv2d(1,basechannel,3,padding=1)
@@ -85,19 +88,17 @@ class Model(torch.nn.Module):
         self.conv3 = nn.Conv2d(basechannel*2,basechannel*4,3,padding=1)
         self.conv4 = nn.Conv2d(basechannel*4,basechannel*8,3,padding=1) 
         self.conv5 = nn.Conv2d(basechannel*8,basechannel*4,3,padding=1)
-        self.inshape = 336*basechannel
-        self.linear = nn.Linear(336*basechannel,m)
+        self.inshape = 244*basechannel
+        self.linear = nn.Linear(244*basechannel,m)
         self.norm1 = nn.BatchNorm2d(basechannel)
         self.norm2 = nn.BatchNorm2d(basechannel*2)
         self.norm3 = nn.BatchNorm2d(basechannel*4)
         self.norm4 = nn.BatchNorm2d(basechannel*8)
     def forward(self, x):
-        fft = torch.stft(x,self.stft)
-        # batch_size * N * T * 2
-        afftpow2 = fft[:,:,:,0] **2 + fft[:,:,:,1]
-        x = afftpow2.unsqueeze(1)
-        # batch_size * N * T
-        x = F.relu(self.conv1(x))
+        zx = conv1d(x[:,None,:], self.wsin_var, stride=self.stride).pow(2) \
+           + conv1d(x[:,None,:], self.wcos_var, stride=self.stride).pow(2)
+        zx = zx.unsqueeze(1)
+        x = F.relu(self.conv1(zx))
         x = self.norm1(x)
         x = self.maxpool(x)
         x =  F.relu(self.conv2(x))
@@ -105,10 +106,6 @@ class Model(torch.nn.Module):
         x = self.maxpool(x)
         x = F.relu(self.conv3(x))
         x = self.norm3(x)
-        x = F.relu(self.conv4(x))
-        x = self.norm4(x)
-        x = F.relu(self.conv5(x))
-        x = self.avgpool(x)
         x = x.reshape(self.batch_size,self.inshape)
         return self.linear(x)
     
@@ -150,3 +147,98 @@ class ToneNN(torch.nn.Module):
         flattened = output3.view(-1)
 
         return self.fc(flattened)
+
+class Model2(torch.nn.Module):
+    def __init__(self, avg=.9998,stride=512,regions=25,d=4096,k=500,m=128,stft=512,window=16384,batch_size=100,basechannel=16):
+        super(Model2, self).__init__()
+
+        self.stride=stride
+        self.regions=regions
+        self.k=k
+        
+        wsin,wcos = create_filters(d,k)
+        with torch.cuda.device(0):
+            self.wsin_var = Variable(torch.from_numpy(wsin).cuda(), requires_grad=False)
+            self.wcos_var = Variable(torch.from_numpy(wcos).cuda(), requires_grad=False)
+        #For stft
+        self.stft=stft
+        self.N = stft//2 + 1
+        self.T = window//(4*stft) + 1
+
+        self.avg = avg
+        self.averages = copy.deepcopy(list(parm.data for parm in self.parameters()))
+        for (name,parm),pavg in zip(self.named_parameters(),self.averages):
+            name = name.split('.')[0]
+            self.register_buffer(name + '_avg', pavg)
+
+        self.batch_size=batch_size
+        self.inshape=501*2*basechannel
+        self.conv1 = nn.Conv2d(1,basechannel,(128,1),padding=(64,0))
+        self.conv2 = nn.Conv2d(basechannel,2*basechannel,(1,25))
+        self.linear = nn.Linear(self.inshape,m)
+        
+        self.norm1 = nn.BatchNorm2d(basechannel)
+        self.norm2 = nn.BatchNorm2d(basechannel*2)
+    def forward(self, x):
+        zx = conv1d(x[:,None,:], self.wsin_var, stride=self.stride).pow(2) \
+           + conv1d(x[:,None,:], self.wcos_var, stride=self.stride).pow(2)
+        #batch size * 500 * 25
+        zx = zx.unsqueeze(1)
+        x = F.relu(self.conv1(torch.log(zx + 10e-15)))
+        # batch size *basechannel * 501 * 25
+        x = self.norm1(x)
+        x =  F.relu(self.conv2(x))
+        x = self.norm2(x)
+        # batchsize * basechannel2 * 501 * 1
+        x = x.reshape(self.batch_size,self.inshape)
+        return self.linear(x)
+    def average_iterates(self):
+        for parm, pavg in zip(self.parameters(), self.averages):
+            pavg.mul_(self.avg).add_(1.-self.avg, parm.data)
+
+
+class ComplexModel(torch.nn.Module):
+    def __init__(self, avg=.9998,stride=512,regions=25,d=4096,k=500,m=128,stft=512,window=16384,batch_size=100,basechannel=16):
+        super(Model2, self).__init__()
+
+        self.stride=stride
+        self.regions=regions
+        self.k=k
+        
+        wsin,wcos = create_filters(d,k)
+        with torch.cuda.device(0):
+            self.wsin_var = Variable(torch.from_numpy(wsin).cuda(), requires_grad=False)
+            self.wcos_var = Variable(torch.from_numpy(wcos).cuda(), requires_grad=False)
+        #For stft
+        self.stft=stft
+        self.N = stft//2 + 1
+        self.T = window//(4*stft) + 1
+
+        self.avg = avg
+        self.averages = copy.deepcopy(list(parm.data for parm in self.parameters()))
+        for (name,parm),pavg in zip(self.named_parameters(),self.averages):
+            name = name.split('.')[0]
+            self.register_buffer(name + '_avg', pavg)
+
+        self.batch_size=batch_size
+        self.inshape=501*2*basechannel
+        self.conv1 = nn.Conv2d(2,basechannel,(128,1),padding=(64,0))
+        self.conv2 = nn.Conv2d(basechannel,2*basechannel,(1,25))
+        self.linear = nn.Linear(self.inshape,m)
+        
+        self.norm1 = nn.BatchNorm2d(basechannel)
+        self.norm2 = nn.BatchNorm2d(basechannel*2)
+    def forward(self, x):
+        zx = torch.stack([conv1d(x[:,None,:], self.wsin_var, stride=self.stride),conv1d(x[:,None,:], self.wcos_var, stride=self.stride)],dim=1)
+        #batch size * 500 * 25
+        x = F.relu(self.conv1(zx))
+        # batch size *basechannel * 501 * 25
+        x = self.norm1(x)
+        x =  F.relu(self.conv2(x))
+        x = self.norm2(x)
+        # batchsize * basechannel2 * 501 * 1
+        x = x.reshape(self.batch_size,self.inshape)
+        return self.linear(x)
+    def average_iterates(self):
+        for parm, pavg in zip(self.parameters(), self.averages):
+            pavg.mul_(self.avg).add_(1.-self.avg, parm.data)
