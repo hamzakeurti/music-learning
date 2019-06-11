@@ -32,10 +32,12 @@ parser.add_argument('--epochs',default=50,type=int)
 parser.add_argument('--model',default='Baseline',type=str,choices = ['NaiveFilter','NaiveCNN','Baseline','ComplexModel'])
 
 args = parser.parse_args()
+print(args)
+
 model_dict={'Baseline':Baseline,'NaiveCNN':NaiveCNN,'NaiveFilter':NaiveFilter,'ComplexModel':ComplexModel}
 root = './musicnet'
 checkpoint_path = './checkpoints'
-checkpoint = 'musicnet_'+args.model + '_' + args.mode + '.pt'
+checkpoint = 'musicnet_'+args.model + '.pt'
 
 
 try:
@@ -108,24 +110,25 @@ if args.optim=='Adam':
 
 try:
     with train_set, test_set:
-        print('square loss\tavg prec\tnote prec\tinstr prec\ttime\t\tutime')
+        print('task\tsquare loss\tavg prec\tnote prec\tinstr prec\ttime\t\tutime')
         for epoch in range(args.epochs):
             t = time()
             train_n = epoch % 2
+
             for i, (x, y) in enumerate(train_loader):
                 x, y = Variable(x.cuda(), requires_grad=False), Variable(y.cuda(), requires_grad=False)
                 pred = model(x)
                 loss_n = L(pred[:,:a],y[:,:a])
                 loss_i = L(pred[:,a:],y[:,a:])
                 optimizer.zero_grad()
-                if epoch:
+                if train_n:
                     loss_n.backward()
                 else:
                     loss_i.backward()
                 optimizer.step()
                 model.average_iterates()
             t1 = time()
-            avgp_tot,avgp_n,avgp_i, loss_i,loss_n,loss_tot = 0., 0., 0., 0.
+            avgp_tot,avgp_n,avgp_i, loss_i,loss_n,loss_tot = 0., 0., 0., 0., 0., 0.
             yground = torch.FloatTensor(batch_size*len(test_loader), m)
             yhat = torch.FloatTensor(batch_size*len(test_loader), m)
             with averages(model):
@@ -148,7 +151,11 @@ try:
             avgp_history_i.append(avgp_i)
             avgp_history_n.append(avgp_n)
             torch.save(model.state_dict(), os.path.join(checkpoint_path,checkpoint))
-            print('{:2f}\t{:2f}\t{:2f}\t{:2f}\t{:2f}\t{:2f}'.format(loss_history_tot[-1],avgp_history_tot[-1],avgp_history_n[-1],avgp_history_i[-1],time()-t, time()-t1))
+            if train_n:
+                task='notes' 
+            else:
+                task = 'instruments'
+            print(task+'\t{:2f}\t{:2f}\t{:2f}\t{:2f}\t{:2f}\t{:2f}'.format(loss_history_tot[-1],avgp_history_tot[-1],avgp_history_n[-1],avgp_history_i[-1],time()-t, time()-t1))
 
 except KeyboardInterrupt:
     print('Graceful Exit')
