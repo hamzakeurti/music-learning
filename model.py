@@ -8,6 +8,7 @@ import numpy as np
 import copy
 import math
 import torch.nn.functional as F
+
 def create_filters(d,k,low=50,high=6000):
     x = np.linspace(0, 2*np.pi, d, endpoint=False)
     wsin = np.empty((k,1,d), dtype=np.float32)
@@ -24,9 +25,9 @@ def create_filters(d,k,low=50,high=6000):
     return wsin,wcos
 
 
-class Baseline(torch.nn.Module):
+class NaiveFilter(torch.nn.Module):
     def __init__(self, avg=.9998,stride=512,regions=25,d=4096,k=500,m=128):
-        super(Baseline, self).__init__()
+        super(NaiveFilter, self).__init__()
         
         wsin,wcos = create_filters(d,k)
         with torch.cuda.device(0):
@@ -56,9 +57,9 @@ class Baseline(torch.nn.Module):
         for parm, pavg in zip(self.parameters(), self.averages):
             pavg.mul_(self.avg).add_(1.-self.avg, parm.data)
 
-class Model(torch.nn.Module):
+class NaiveCNN(torch.nn.Module):
     def __init__(self, avg=.9998,stride=512,regions=25,d=4096,k=500,m=128,stft=512,window=16384,batch_size=100,basechannel=16):
-        super(Model, self).__init__()
+        super(NaiveCNN, self).__init__()
 
         self.stride=stride
         self.regions=regions
@@ -148,9 +149,9 @@ class ToneNN(torch.nn.Module):
 
         return self.fc(flattened)
 
-class Model2(torch.nn.Module):
+class Baseline(torch.nn.Module):
     def __init__(self, avg=.9998,stride=512,regions=25,d=4096,k=500,m=128,stft=512,window=16384,batch_size=100,basechannel=16):
-        super(Model2, self).__init__()
+        super(Baseline, self).__init__()
 
         self.stride=stride
         self.regions=regions
@@ -172,8 +173,8 @@ class Model2(torch.nn.Module):
             self.register_buffer(name + '_avg', pavg)
 
         self.batch_size=batch_size
-        self.inshape=501*2*basechannel
-        self.conv1 = nn.Conv2d(1,basechannel,(128,1),padding=(64,0))
+        self.inshape=251*2*basechannel
+        self.conv1 = nn.Conv2d(1,basechannel,(128,1),stride=(2,1),padding=(64,0))
         self.conv2 = nn.Conv2d(basechannel,2*basechannel,(1,25))
         self.linear = nn.Linear(self.inshape,m)
         
@@ -199,7 +200,7 @@ class Model2(torch.nn.Module):
 
 class ComplexModel(torch.nn.Module):
     def __init__(self, avg=.9998,stride=512,regions=25,d=4096,k=500,m=128,stft=512,window=16384,batch_size=100,basechannel=16):
-        super(Model2, self).__init__()
+        super(ComplexModel, self).__init__()
 
         self.stride=stride
         self.regions=regions

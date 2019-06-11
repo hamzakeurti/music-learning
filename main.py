@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 
 from sklearn.metrics import average_precision_score
 import argparse
-from model import Baseline,Model,Model2
+from model import NaiveFilter,NaiveCNN,Baseline,ComplexModel
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--mmap',default=1,type=int)
@@ -30,11 +30,12 @@ parser.add_argument('--optim',default='SGD',type=str)
 parser.add_argument('--basechannel',default=16,type=int)
 parser.add_argument('--l1norm',default=0.,type=float)
 parser.add_argument('--epochs',default=50,type=int)
+parser.add_argument('--model',default='Baseline',type=str,choices = ['NaiveFilter','NaiveCNN','Baseline','ComplexModel'])
 args = parser.parse_args()
-
+model_dict={'Baseline':Baseline,'NaiveCNN':NaiveCNN,'NaiveFilter':NaiveFilter,'ComplexModel':ComplexModel}
 root = './musicnet'
 checkpoint_path = './checkpoints'
-checkpoint = 'musicnet_' + args.mode + '.pt'
+checkpoint = 'musicnet_'+args.model + '_' + args.mode + '.pt'
 try:
     os.makedirs(checkpoint_path)
 except OSError as e:
@@ -80,8 +81,7 @@ def averages(model):
     yield
     for parm, orig in zip(model.parameters(), orig_parms):
         parm.data.copy_(orig)
-
-model = ComplexModel(m=m,basechannel = args.basechannel).cuda()
+model = model_dict[args.model](m=m,basechannel = args.basechannel).cuda()
 print(model)
 loss_history = []
 avgp_history = []
