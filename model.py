@@ -253,8 +253,8 @@ class CrossStitchModel(torch.nn.Module):
         self.model_i = model_i
         self.cross_matrix = Variable(torch.rand([2,2]))
     def forward(self,x):
-        zx = conv1d(x[:,None,:], self.wsin_var, stride=self.stride).pow(2) \
-           + conv1d(x[:,None,:], self.wcos_var, stride=self.stride).pow(2)
+        zx = conv1d(x[:,None,:], self.model_i.wsin_var, stride=self.model_i.stride).pow(2) \
+           + conv1d(x[:,None,:], self.model_i.wcos_var, stride=self.model_i.stride).pow(2)
                    #batch size * 500 * 25
         zx = zx.unsqueeze(1)
         
