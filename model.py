@@ -243,3 +243,45 @@ class ComplexModel(torch.nn.Module):
     def average_iterates(self):
         for parm, pavg in zip(self.parameters(), self.averages):
             pavg.mul_(self.avg).add_(1.-self.avg, parm.data)
+
+
+
+class CrossStitchModel(torch.nn.Module):
+    def __init__(self,model_n,model_i):
+        super(CrossStitchModel,self).__init__
+        self.model_n = model_n
+        self.model_i = model_i
+        self.cross_matrix = Variable(torch.tensor([2,2]).random_(from =0.1,to =0.9))
+    def forward(self,x):
+        zx = conv1d(x[:,None,:], self.wsin_var, stride=self.stride).pow(2) \
+           + conv1d(x[:,None,:], self.wcos_var, stride=self.stride).pow(2)
+                   #batch size * 500 * 25
+        zx = zx.unsqueeze(1)
+        
+        x1 = F.relu(self.model_n.conv1(torch.log(zx + 10e-15)))
+        x2 = F.relu(self.model_i.conv1(torch.log(zx + 10e-15)))
+        
+
+        # batch size *basechannel * 501 * 25
+        x1 = self.model_n.norm1(x1)
+        x1 =  F.relu(self.model_n.conv2(x1))
+
+        x2 = self.model_i.norm1(x2)
+        x2 =  F.relu(self.model_i.conv2(x2))
+
+
+        # Crossing
+        x1 = self.cross_matrix[0,0]*x1 + self.cross_matrix[1,0]*x2
+        x2 = self.cross_matrix[0,1]*x1 + self.cross_matrix[1,1]*x2
+        
+
+        # batchsize * basechannel2 * 501 * 1
+        x1 = self.model_n.norm2(x1)
+        x1 = x1.reshape(self.model_n.batch_size,self.model_n.inshape)
+
+        # batch size *basechannel * 501 * 25
+
+        # batchsize * basechannel2 * 502 * 2
+        x2 = self.model_i.norm2(x2)
+        x2 = x2.reshape(self.model_i.batch_size,self.model_i.inshape)
+        return torch.cat((self.model_n.linear(x1), self.model_i.linear(x2),dim=1)
