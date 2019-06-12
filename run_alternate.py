@@ -28,14 +28,14 @@ parser.add_argument('--mm',default=0.95,type=float)
 parser.add_argument('--optim',default='SGD',type=str)
 parser.add_argument('--basechannel',default=16,type=int)
 parser.add_argument('--l1norm',default=0.,type=float)
-parser.add_argument('--epochs',default=50,type=int)
+parser.add_argument('--epochs',default=10,type=int)
 parser.add_argument('--model',default='Baseline',type=str,choices = ['NaiveFilter','NaiveCNN','Baseline','ComplexModel'])
 
 args = parser.parse_args()
 print(args)
 
 model_dict={'Baseline':Baseline,'NaiveCNN':NaiveCNN,'NaiveFilter':NaiveFilter,'ComplexModel':ComplexModel}
-root = './musicnet'
+root = '/data/valentin/music-learning/musicnet'
 checkpoint_path = './checkpoints'
 checkpoint = 'musicnet_'+args.model + '.pt'
 
