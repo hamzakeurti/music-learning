@@ -248,7 +248,7 @@ class ComplexModel(torch.nn.Module):
 
 class CrossStitchModel(torch.nn.Module):
     def __init__(self,model_n,model_i):
-        super(CrossStitchModel,self).__init__
+        super(CrossStitchModel,self).__init__()
         self.model_n = model_n
         self.model_i = model_i
         self.cross_matrix = Variable(torch.tensor([2,2]).random_(0.1,0.9))
