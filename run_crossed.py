@@ -112,10 +112,10 @@ avgp_history_n = []
 
 optimizer_n = torch.optim.SGD(model_n.parameters(), lr = args.lr, momentum=args.mm)
 if args.optim=='Adam':
-    optimizer = torch.optim.Adam(model_n.parameters(), lr = args.lr)
+    optimizer_n = torch.optim.Adam(model_n.parameters(), lr = args.lr)
 optimizer_i = torch.optim.SGD(model_i.parameters(), lr = args.lr, momentum=args.mm)
 if args.optim=='Adam':
-    optimizer = torch.optim.Adam(model_i.parameters(), lr = args.lr)
+    optimizer_i = torch.optim.Adam(model_i.parameters(), lr = args.lr)
 
 try:
     with train_set, test_set:
@@ -131,9 +131,9 @@ try:
                 pred = model_n(x)
                 loss_n = L(pred[:,:a],y[:,:a])
                 loss_i = L(pred[:,a:],y[:,a:])
-                optimizer.zero_grad()
+                optimizer_n.zero_grad()
                 loss_n.backward()
-                optimizer.step()
+                optimizer_n.step()
                 model_n.average_iterates()
             t1 = time()
             avgp_tot,avgp_n,avgp_i, loss_i,loss_n,loss_tot = 0., 0., 0., 0., 0., 0.
@@ -185,9 +185,9 @@ try:
                 pred = model_i(x)
                 loss_n = L(pred[:,:a],y[:,:a])
                 loss_i = L(pred[:,a:],y[:,a:])
-                optimizer.zero_grad()
+                optimizer_i.zero_grad()
                 loss_i.backward()
-                optimizer.step()
+                optimizer_i.step()
                 model_i.average_iterates()
             t1 = time()
             avgp_tot,avgp_n,avgp_i, loss_i,loss_n,loss_tot = 0., 0., 0., 0., 0., 0.
@@ -232,7 +232,7 @@ model_i.train(False)
 model_tot = CrossStitchModel(model_n=model_n,model_i = model_i)
 optimizer_tot = torch.optim.SGD(model_tot.parameters(), lr = args.lr, momentum=args.mm)
 if args.optim=='Adam':
-    optimizer = torch.optim.Adam(model_tot.parameters(), lr = args.lr)
+    optimizer_tot = torch.optim.Adam(model_tot.parameters(), lr = args.lr)
 
 try:
     with train_set, test_set:
@@ -247,9 +247,9 @@ try:
                 pred = model_tot(x)
                 loss_n = L(pred[:,:a],y[:,:a])
                 loss_i = L(pred[:,a:],y[:,a:])
-                optimizer.zero_grad()
+                optimizer_tot.zero_grad()
                 (loss_i+loss_n).backward()
-                optimizer.step()
+                optimizer_tot.step()
                 model_tot.average_iterates()
             t1 = time()
             avgp_tot,avgp_n,avgp_i, loss_i,loss_n,loss_tot = 0., 0., 0., 0., 0., 0.
