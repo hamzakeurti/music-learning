@@ -23,21 +23,23 @@ parser.add_argument('--batch_size',default=100,type=int)
 parser.add_argument('--data_reload',default=0,type=int,choices=[0,1])
 parser.add_argument('--stft_size',default= 512)
 parser.add_argument('--visible_device',default='1',type=str)
-parser.add_argument('--lr',default=0.001,type=float)
+parser.add_argument('--lr',default=0.0001,type=float)
 parser.add_argument('--mm',default=0.95,type=float)
 parser.add_argument('--optim',default='SGD',type=str)
 parser.add_argument('--basechannel',default=16,type=int)
 parser.add_argument('--l1norm',default=0.,type=float)
-parser.add_argument('--epochs',default=50,type=int)
+parser.add_argument('--epochs',default=5,type=int)
 parser.add_argument('--model',default='Baseline',type=str,choices = ['NaiveFilter','NaiveCNN','Baseline','ComplexModel'])
 args = parser.parse_args()
 
 mode = 'hybrid'
 model_dict={'Baseline':Baseline,'NaiveCNN':NaiveCNN,'NaiveFilter':NaiveFilter,'ComplexModel':ComplexModel}
-root = './musicnet'
+root = '/data/valentin/music-learning/musicnet'
 checkpoint_path = './checkpoints'
 checkpoint_n = 'musicnet_'+args.model + '_' + mode + '_n.pt'
 checkpoint_i = 'musicnet_'+args.model + '_' + mode + '_i.pt'
+checkpoint_tot = 'musicnet_'+args.model + '_' + mode + '_tot.pt'
+
 
 try:
     os.makedirs(checkpoint_path)
