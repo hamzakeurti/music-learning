@@ -251,7 +251,7 @@ class CrossStitchModel(torch.nn.Module):
         super(CrossStitchModel,self).__init__()
         self.model_n = model_n
         self.model_i = model_i
-        self.cross_matrix = Variable(torch.tensor([2,2]).random_(0.1,0.9))
+        self.cross_matrix = Variable(torch.rand([2,2]))
     def forward(self,x):
         zx = conv1d(x[:,None,:], self.wsin_var, stride=self.stride).pow(2) \
            + conv1d(x[:,None,:], self.wcos_var, stride=self.stride).pow(2)
