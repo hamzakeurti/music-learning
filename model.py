@@ -247,11 +247,13 @@ class ComplexModel(torch.nn.Module):
 
 
 class CrossStitchModel(torch.nn.Module):
-    def __init__(self,model_n,model_i):
+    def __init__(self,model_n,model_i,avg=.9998):
         super(CrossStitchModel,self).__init__()
         self.model_n = model_n
         self.model_i = model_i
         self.cross_matrix = Variable(torch.rand([2,2]))
+
+        self.avg = avg
         self.averages = copy.deepcopy(list(parm.data for parm in self.parameters()))
         for (name,parm),pavg in zip(self.named_parameters(),self.averages):
             name = name.split('.')[0]
