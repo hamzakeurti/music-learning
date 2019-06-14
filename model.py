@@ -252,6 +252,11 @@ class CrossStitchModel(torch.nn.Module):
         self.model_n = model_n
         self.model_i = model_i
         self.cross_matrix = Variable(torch.rand([2,2]))
+        self.averages = copy.deepcopy(list(parm.data for parm in self.parameters()))
+        for (name,parm),pavg in zip(self.named_parameters(),self.averages):
+            name = name.split('.')[0]
+            self.register_buffer(name + '_avg', pavg)
+
     def forward(self,x):
         zx = conv1d(x[:,None,:], self.model_i.wsin_var, stride=self.model_i.stride).pow(2) \
            + conv1d(x[:,None,:], self.model_i.wcos_var, stride=self.model_i.stride).pow(2)
@@ -284,4 +289,8 @@ class CrossStitchModel(torch.nn.Module):
         # batchsize * basechannel2 * 502 * 2
         x2 = self.model_i.norm2(x2)
         x2 = x2.reshape(self.model_i.batch_size,self.model_i.inshape)
-        return torch.cat((self.model_n.linear(x1)[:,:128], self.model_i.linear(x2)[128:]),dim=1)
+        return torch.cat((self.model_n.linear(x1)[:,:128], self.model_i.linear(x2)[:,128:]),dim=1)
+    
+    def average_iterates(self):
+        for parm, pavg in zip(self.parameters(), self.averages):
+            pavg.mul_(self.avg).add_(1.-self.avg, parm.data)
