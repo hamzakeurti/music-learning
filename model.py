@@ -251,7 +251,7 @@ class CrossStitchModel(torch.nn.Module):
         super(CrossStitchModel,self).__init__()
         self.model_n = model_n
         self.model_i = model_i
-        self.cross_matrix = Variable(torch.rand([2,2]))
+        self.cross_matrix = Variable(torch.stack([torch.eye(2),torch.eye(2)]))
 
         self.avg = avg
         self.averages = copy.deepcopy(list(parm.data for parm in self.parameters()))
@@ -268,6 +268,8 @@ class CrossStitchModel(torch.nn.Module):
         x1 = F.relu(self.model_n.conv1(torch.log(zx + 10e-15)))
         x2 = F.relu(self.model_i.conv1(torch.log(zx + 10e-15)))
         
+        x1 = self.cross_matrix[0,0,0]*x1 + self.cross_matrix[0,1,0]*x2
+        x2 = self.cross_matrix[0,0,1]*x1 + self.cross_matrix[0,1,1]*x2
 
         # batch size *basechannel * 501 * 25
         x1 = self.model_n.norm1(x1)
@@ -278,8 +280,8 @@ class CrossStitchModel(torch.nn.Module):
 
 
         # Crossing
-        x1 = self.cross_matrix[0,0]*x1 + self.cross_matrix[1,0]*x2
-        x2 = self.cross_matrix[0,1]*x1 + self.cross_matrix[1,1]*x2
+        x1 = self.cross_matrix[1,0,0]*x1 + self.cross_matrix[1,1,0]*x2
+        x2 = self.cross_matrix[1,0,1]*x1 + self.cross_matrix[1,1,1]*x2
         
 
         # batchsize * basechannel2 * 501 * 1
