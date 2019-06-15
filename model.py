@@ -57,100 +57,8 @@ class NaiveFilter(torch.nn.Module):
         for parm, pavg in zip(self.parameters(), self.averages):
             pavg.mul_(self.avg).add_(1.-self.avg, parm.data)
 
-class NaiveCNN(torch.nn.Module):
-    def __init__(self, avg=.9998,stride=512,regions=25,d=4096,k=500,m=128,stft=512,window=16384,batch_size=100,basechannel=16):
-        super(NaiveCNN, self).__init__()
-
-        self.stride=stride
-        self.regions=regions
-        self.k=k
-        
-        wsin,wcos = create_filters(d,k)
-        with torch.cuda.device(0):
-            self.wsin_var = Variable(torch.from_numpy(wsin).cuda(), requires_grad=False)
-            self.wcos_var = Variable(torch.from_numpy(wcos).cuda(), requires_grad=False)
-        #For stft
-        self.stft=stft
-        self.N = stft//2 + 1
-        self.T = window//(4*stft) + 1
-
-        self.avg = avg
-        self.averages = copy.deepcopy(list(parm.data for parm in self.parameters()))
-        for (name,parm),pavg in zip(self.named_parameters(),self.averages):
-            name = name.split('.')[0]
-            self.register_buffer(name + '_avg', pavg)
-
-        self.batch_size=batch_size
-
-        self.maxpool = nn.MaxPool2d(kernel_size=3,stride=2)
-        self.avgpool = nn.AvgPool2d(kernel_size=3,stride=2)
-        self.conv1 = nn.Conv2d(1,basechannel,3,padding=1)
-        self.conv2 =nn.Conv2d(basechannel,basechannel*2,5,stride=2)
-        self.conv3 = nn.Conv2d(basechannel*2,basechannel*4,3,padding=1)
-        self.conv4 = nn.Conv2d(basechannel*4,basechannel*8,3,padding=1) 
-        self.conv5 = nn.Conv2d(basechannel*8,basechannel*4,3,padding=1)
-        self.inshape = 244*basechannel
-        self.linear = nn.Linear(244*basechannel,m)
-        self.norm1 = nn.BatchNorm2d(basechannel)
-        self.norm2 = nn.BatchNorm2d(basechannel*2)
-        self.norm3 = nn.BatchNorm2d(basechannel*4)
-        self.norm4 = nn.BatchNorm2d(basechannel*8)
-    def forward(self, x):
-        zx = conv1d(x[:,None,:], self.wsin_var, stride=self.stride).pow(2) \
-           + conv1d(x[:,None,:], self.wcos_var, stride=self.stride).pow(2)
-        zx = zx.unsqueeze(1)
-        x = F.relu(self.conv1(zx))
-        x = self.norm1(x)
-        x = self.maxpool(x)
-        x =  F.relu(self.conv2(x))
-        x = self.norm2(x)
-        x = self.maxpool(x)
-        x = F.relu(self.conv3(x))
-        x = self.norm3(x)
-        x = x.reshape(self.batch_size,self.inshape)
-        return self.linear(x)
-    
-    def average_iterates(self):
-        for parm, pavg in zip(self.parameters(), self.averages):
-            pavg.mul_(self.avg).add_(1.-self.avg, parm.data)
-
-
-class ToneNN(torch.nn.Module):
-    def __init__(self,conv1_channels,conv2_channels,conv3_channels,conv_size,pool_size,num_features,m=128):
-        super(ToneNN,self).__init__()
-
-        self.frequency_span = frequency_span
-        self.time_span = time_span
-        
-        self.pool_size = pool_size
-        self.conv_size = conv_size
-
-        self.conv1 = nn.Conv2d(1,conv1_channels,self.conv_size)
-        self.conv2 = nn.Conv2d(conv1_channels,conv2_channels,self.conv_size)
-        self.conv3 = nn.Conv2d(conv2_channels,conv3_channels,self.conv_size)
-
-        self.number_features = num_features
-        self.fc = nn.Linear(in_features=self.number_features, out_features=m)
-
-    def forward(self,audio):
-        
-        audio = audio[:,None,:,:]
-
-        conv_output1 = self.conv1(audio)
-        output1 = F.relu(nn.MaxPool2d(self.pool_size)(conv_output1))
-        
-        conv_output2 = self.conv2(output1)
-        output2 = F.relu(nn.MaxPool2d(self.pool_size)(conv_output2))
-        
-        conv_output3 = self.conv3(output2)
-        output3 = F.relu(nn.MaxPool2d(self.pool_size)(conv_output3))
-
-        flattened = output3.view(-1)
-
-        return self.fc(flattened)
-
 class Baseline(torch.nn.Module):
-    def __init__(self, avg=.9998,stride=512,regions=25,d=4096,k=500,m=128,stft=512,window=16384,batch_size=100,basechannel=16):
+    def __init__(self, avg=.9998,stride=512,regions=25,d=4096,k=500,m=128,stft=512,window=16384,batch_size=100,basechannel=128):
         super(Baseline, self).__init__()
 
         self.stride=stride
@@ -177,7 +85,6 @@ class Baseline(torch.nn.Module):
         self.conv1 = nn.Conv2d(1,basechannel,(128,1),stride=(2,1),padding=(64,0))
         self.conv2 = nn.Conv2d(basechannel,2*basechannel,(1,25))
         self.linear = nn.Linear(self.inshape,m)
-        
         self.norm1 = nn.BatchNorm2d(basechannel)
         self.norm2 = nn.BatchNorm2d(basechannel*2)
     def forward(self, x):
@@ -197,10 +104,9 @@ class Baseline(torch.nn.Module):
         for parm, pavg in zip(self.parameters(), self.averages):
             pavg.mul_(self.avg).add_(1.-self.avg, parm.data)
 
-
-class ComplexModel(torch.nn.Module):
-    def __init__(self, avg=.9998,stride=512,regions=25,d=4096,k=500,m=128,stft=512,window=16384,batch_size=100,basechannel=16):
-        super(ComplexModel, self).__init__()
+class HardParameterSharing1(torch.nn.Module):
+    def __init__(self, avg=.9998,stride=512,regions=25,d=4096,k=500,m=139,stft=512,window=16384,batch_size=100,basechannel=128):
+        super(HardParameterSharing1, self).__init__()
 
         self.stride=stride
         self.regions=regions
@@ -222,24 +128,108 @@ class ComplexModel(torch.nn.Module):
             self.register_buffer(name + '_avg', pavg)
 
         self.batch_size=batch_size
-        self.inshape=501*2*basechannel
-        self.conv1 = nn.Conv2d(2,basechannel,(128,1),padding=(64,0))
+        self.inshape=251*2*basechannel
+        self.conv1 = nn.Conv2d(1,basechannel,(128,1),stride=(2,1),padding=(64,0))
         self.conv2 = nn.Conv2d(basechannel,2*basechannel,(1,25))
-        self.linear = nn.Linear(self.inshape,m)
+        self.linear_note = nn.Linear(self.inshape,128)
+        self.linear_inst = nn.Linear(self.inshape,11)
         
         self.norm1 = nn.BatchNorm2d(basechannel)
         self.norm2 = nn.BatchNorm2d(basechannel*2)
     def forward(self, x):
-        zx = torch.stack([conv1d(x[:,None,:], self.wsin_var, stride=self.stride),conv1d(x[:,None,:], self.wcos_var, stride=self.stride)],dim=1)
+        #Shared part
+        zx = conv1d(x[:,None,:], self.wsin_var, stride=self.stride).pow(2) \
+           + conv1d(x[:,None,:], self.wcos_var, stride=self.stride).pow(2)
+        zx = zx.unsqueeze(1)
+        shared = F.relu(self.conv1(torch.log(zx + 10e-15)))
+        shared = self.norm1(shared)
+
+        #Disjonction
+        x_note =  F.relu(self.conv2(shared))
+        x_note = self.norm2(x_note)
+        x_note = x_note.reshape(self.batch_size,self.inshape)
+        x_note = self.linear_note(x_note)
+
+        x_inst =  F.relu(self.conv2(shared))
+        x_inst = self.norm2(x_inst)
+        x_inst = x_inst.reshape(self.batch_size,self.inshape)
+        x_inst = self.linear_inst(x_inst)
+
+        return torch.cat((x_note,x_inst),dim=1)
+
+    def average_iterates(self):
+        for parm, pavg in zip(self.parameters(), self.averages):
+            pavg.mul_(self.avg).add_(1.-self.avg, parm.data)
+
+class SoftParameterSharing(torch.nn.Module):
+    def __init__(self, avg=.9998,stride=512,regions=25,d=4096,k=500,m=139,stft=512,window=16384,batch_size=100,basechannel=128):
+        super(SoftParameterSharing, self).__init__()
+
+        self.stride=stride
+        self.regions=regions
+        self.k=k
+        
+        wsin,wcos = create_filters(d,k)
+        with torch.cuda.device(0):
+            self.wsin_var = Variable(torch.from_numpy(wsin).cuda(), requires_grad=False)
+            self.wcos_var = Variable(torch.from_numpy(wcos).cuda(), requires_grad=False)
+        #For stft
+        self.stft=stft
+        self.N = stft//2 + 1
+        self.T = window//(4*stft) + 1
+
+        self.avg = avg
+        self.averages = copy.deepcopy(list(parm.data for parm in self.parameters()))
+        for (name,parm),pavg in zip(self.named_parameters(),self.averages):
+            name = name.split('.')[0]
+            self.register_buffer(name + '_avg', pavg)
+
+        self.batch_size=batch_size
+        self.inshape=251*2*basechannel
+        # Soft shared parameters
+        self.conv1_note = nn.Conv2d(1,basechannel,(128,1),stride=(2,1),padding=(64,0))
+        self.conv1_inst = nn.Conv2d(1,basechannel,(128,1),stride=(2,1),padding=(64,0))
+
+        self.conv2_note = nn.Conv2d(basechannel,2*basechannel,(1,25))
+        self.conv2_inst = nn.Conv2d(basechannel,2*basechannel,(1,25))
+
+
+        self.linear_note = nn.Linear(self.inshape,128)
+        self.linear_inst = nn.Linear(self.inshape,11)
+        
+        self.norm1_note = nn.BatchNorm2d(basechannel)
+        self.norm1_inst = nn.BatchNorm2d(basechannel)
+
+        self.norm2_note = nn.BatchNorm2d(basechannel*2)
+        self.norm2_inst = nn.BatchNorm2d(basechannel*2)
+
+    def forward(self, x):
+        zx = conv1d(x[:,None,:], self.wsin_var, stride=self.stride).pow(2) \
+           + conv1d(x[:,None,:], self.wcos_var, stride=self.stride).pow(2)
         #batch size * 500 * 25
-        x = F.relu(self.conv1(zx))
-        # batch size *basechannel * 501 * 25
-        x = self.norm1(x)
-        x =  F.relu(self.conv2(x))
-        x = self.norm2(x)
-        # batchsize * basechannel2 * 501 * 1
-        x = x.reshape(self.batch_size,self.inshape)
-        return self.linear(x)
+        zx = zx.unsqueeze(1)
+        zx = torch.log(zx + 10e-15)
+
+
+        x_note = F.relu(self.conv1_note(zx))
+        x_note = self.norm1_note(x_note)
+
+        x_inst = F.relu(self.conv1_inst(zx))
+        x_inst = self.norm1_inst(x_inst)
+
+        x_note =  F.relu(self.conv2_note(x_note))
+        x_note = self.norm2_note(x_note)
+        x_note = x_note.reshape(self.batch_size,self.inshape)
+        x_note = self.linear_note(x_note)
+
+
+        x_inst =  F.relu(self.conv2_inst(x_inst))
+        x_inst = self.norm2_inst(x_inst)
+        x_inst = x_inst.reshape(self.batch_size,self.inshape)
+        x_inst = self.linear_inst(x_inst)
+
+        return torch.cat((x_note,x_inst),dim=1)
+
     def average_iterates(self):
         for parm, pavg in zip(self.parameters(), self.averages):
             pavg.mul_(self.avg).add_(1.-self.avg, parm.data)
