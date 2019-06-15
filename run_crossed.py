@@ -167,7 +167,7 @@ def run_model(model,optimizer,task,checkpoint):
                 avgp_history_i.append(avgp_i)
                 avgp_history_n.append(avgp_n)
                 torch.save(model.state_dict(), os.path.join(checkpoint_path,checkpoint))
-                print('{:2f}\t{:2f}\t{:2f}\t{:2f}\t{:.2f}\t'.format(l_history_tot[-1],avgp_history_tot[-1],avgp_history_n[-1],avgp_history_i[-1],time()-t)+task)
+                print('{:.4f}\t{:.3f}\t{:.3f}\t{:.3f}\t{:.2f}\t'.format(l_history_tot[-1],avgp_history_tot[-1],avgp_history_n[-1],avgp_history_i[-1],time()-t)+task)
 
     except KeyboardInterrupt:
         print('Graceful Exit')
