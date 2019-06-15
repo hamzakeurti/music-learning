@@ -115,7 +115,7 @@ if args.optim=='Adam':
 
 
 
-def run_model(model,optimizer,task):
+def run_model(model,optimizer,task,checkpoint):
     l_history_i = []
     l_history_n = []
     l_history_tot = []
@@ -125,7 +125,7 @@ def run_model(model,optimizer,task):
     try:
         with train_set, test_set:
             print('current task : training ' + task)
-            print('square loss\tavg prec\tnote prec\tinstr prec\ttime\t\tutime\ttask')
+            print('square loss\tavg prec\tnote prec\tinstr prec\ttime\ttask')
             for epoch in range(args.epochs):
                 t = time()
 
@@ -166,8 +166,8 @@ def run_model(model,optimizer,task):
                 avgp_history_tot.append(avgp_tot)
                 avgp_history_i.append(avgp_i)
                 avgp_history_n.append(avgp_n)
-                torch.save(model.state_dict(), os.path.join(checkpoint_path,checkpoint_i))
-                print('{:2f}\t{:2f}\t{:2f}\t{:2f}\t{:2f}\t{:2f}\t'.format(l_history_tot[-1],avgp_history_tot[-1],avgp_history_n[-1],avgp_history_i[-1],time()-t, time()-t1)+task)
+                torch.save(model.state_dict(), os.path.join(checkpoint_path,checkpoint))
+                print('{:2f}\t{:2f}\t{:2f}\t{:2f}\t{:2f}\t'.format(l_history_tot[-1],avgp_history_tot[-1],avgp_history_n[-1],avgp_history_i[-1],time()-t)+task)
 
     except KeyboardInterrupt:
         print('Graceful Exit')
@@ -175,9 +175,9 @@ def run_model(model,optimizer,task):
         print('Finished')
 
 
-run_model(model_n,optimizer_n,task="notes")
+run_model(model_n,optimizer_n,task="notes",checkpoint=checkpoint_n)
 
-run_model(model_i,optimizer_i,task="instru")
+run_model(model_i,optimizer_i,task="instru",checkpoint=checkpoint_i)
 
 
 
@@ -188,7 +188,7 @@ optimizer_tot = torch.optim.SGD(model_tot.parameters(), lr = args.lr, momentum=a
 if args.optim=='Adam':
     optimizer_tot = torch.optim.Adam(model_tot.parameters(), lr = args.lr)
 
-run_model(model_tot,optimizer_tot,task="stitch")
+run_model(model_tot,optimizer_tot,task="stitch",checkpoint=checkpoint_tot)
 
 
 # l_history_i = []
