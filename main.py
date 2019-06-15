@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 
 from sklearn.metrics import average_precision_score
 import argparse
-from model import NaiveFilter,NaiveCNN,Baseline,ComplexModel
+from model import NaiveFilter,Baseline,HardParameterSharing1,SoftParameterSharing
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--mmap',default=1,type=int)
@@ -30,12 +30,15 @@ parser.add_argument('--optim',default='SGD',type=str)
 parser.add_argument('--basechannel',default=16,type=int)
 parser.add_argument('--l1norm',default=0.,type=float)
 parser.add_argument('--epochs',default=50,type=int)
-parser.add_argument('--model',default='Baseline',type=str,choices = ['NaiveFilter','NaiveCNN','Baseline','ComplexModel'])
+parser.add_argument('--model',default='Baseline',type=str,choices = ['NaiveFilter','Baseline','HardParameterSharing','SoftParameterSharing'])
+parser.add_argument('--alpha1',default=0.5,type=float)
+parser.add_argument('--alpha2',default=0.,type=float)
 args = parser.parse_args()
-model_dict={'Baseline':Baseline,'NaiveCNN':NaiveCNN,'NaiveFilter':NaiveFilter,'ComplexModel':ComplexModel}
+print(args)
+model_dict={'Baseline':Baseline,'NaiveFilter':NaiveFilter,'SoftParameterSharing':SoftParameterSharing,'HardParameterSharing1':HardParameterSharing1}
 root = './musicnet'
 checkpoint_path = './checkpoints'
-checkpoint = 'musicnet_'+args.model + '_' + args.mode + '.pt'
+checkpoint = 'musicnet_'+args.model + '_' + args.mode + '_' + str(args.alpha1) + '_' + str(args.alpha2) + '.pt'
 try:
     os.makedirs(checkpoint_path)
 except OSError as e:
@@ -97,13 +100,16 @@ if args.optim=='Adam':
     optimizer = torch.optim.Adam(model.parameters(), lr = args.lr)
 
 try:
+    maxavg=0
     with train_set, test_set:
-        print('square loss\tavg prec\ttime\t\tutime')
+        print('square loss\tavg prec\ttime\t\tnotes\tinstru')
         for epoch in range(args.epochs):
             t = time()
             for i, (x, y) in enumerate(train_loader):
                 x, y = Variable(x.cuda(), requires_grad=False), Variable(y.cuda(), requires_grad=False)
                 loss = L(model(x),y)
+                if args.model =='SoftParameterSharing' :
+                    loss = loss + args.alpha1/2 *mse_loss(model.conv1_inst.weight,model.conv1_note.weight) + args.alpha2/2* mse_loss(model.conv2_inst.weight,model.conv2_note.weight)
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
@@ -120,10 +126,14 @@ try:
                     yground[i*batch_size:(i+1)*batch_size,:] = y.data
                     yhat[i*batch_size:(i+1)*batch_size,:] = yhatvar.data
             avgp = average_precision_score(yground.numpy().flatten(),yhat.numpy().flatten())
+            avg_not=average_precision_score(yground.numpy()[:,:128].flatten(),yhat.numpy()[:,:128].flatten())
+            avg_inst=average_precision_score(yground.numpy()[:,128:].flatten(),yhat.numpy()[:,128:].flatten())
             loss_history.append(loss/len(test_loader))
             avgp_history.append(avgp)
-            torch.save(model.state_dict(), os.path.join(checkpoint_path,checkpoint))
-            print('{:2f}\t{:2f}\t{:2f}\t{:2f}'.format(loss_history[-1],avgp_history[-1],time()-t, time()-t1))
+            if avgp>maxavg:
+                torch.save(model.state_dict(), os.path.join(checkpoint_path,checkpoint))
+                maxavg=avgp
+            print('{:2f}\t{:2f}\t{:2f}\t{:2f}\t{:2f}'.format(loss_history[-1],avgp_history[-1],time()-t, avg_not,avg_inst))
 
 except KeyboardInterrupt:
     print('Graceful Exit')
