@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 
 from sklearn.metrics import average_precision_score
 import argparse
-from model import NaiveFilter,NaiveCNN,Baseline,ComplexModel,CrossStitchModel
+from model import Baseline,CrossStitchModel
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--mmap',default=1,type=int)
@@ -29,11 +29,11 @@ parser.add_argument('--optim',default='SGD',type=str)
 parser.add_argument('--basechannel',default=16,type=int)
 parser.add_argument('--l1norm',default=0.,type=float)
 parser.add_argument('--epochs',default=5,type=int)
-parser.add_argument('--model',default='Baseline',type=str,choices = ['NaiveFilter','NaiveCNN','Baseline','ComplexModel'])
+parser.add_argument('--model',default='Baseline',type=str,choices = ['Baseline'])
 args = parser.parse_args()
 
 mode = 'hybrid'
-model_dict={'Baseline':Baseline,'NaiveCNN':NaiveCNN,'NaiveFilter':NaiveFilter,'ComplexModel':ComplexModel}
+model_dict={'Baseline':Baseline}
 root = '/data/valentin/music-learning/musicnet'
 checkpoint_path = './checkpoints'
 checkpoint_n = 'musicnet_'+args.model + '_' + mode + '_n.pt'
