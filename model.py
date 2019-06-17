@@ -237,17 +237,25 @@ class SoftParameterSharing(torch.nn.Module):
 
 
 class CrossStitchModel(torch.nn.Module):
-    def __init__(self,model_n,model_i,avg=.9998):
+    def __init__(self,model_n,model_i,levels_to_stitch,avg=.9998):
         super(CrossStitchModel,self).__init__()
         self.model_n = model_n
         self.model_i = model_i
-        self.cross_matrix = Variable(torch.stack([torch.eye(2),torch.eye(2)]))
+        # self.cross_matrix = Variable(torch.stack([torch.eye(2),torch.eye(2)])
+        self.stitch_matrix1, self.stitch_matrix2 = Variable(torch.eye(2)), Variable(torch.eye(2))
+
+        if 1 not in levels_to_stitch:
+            self.stitch_matrix1.requires_grad = False
+        if 2 not in levels_to_stitch:
+            self.stitch_matrix1.requires_grad = False
+
 
         self.avg = avg
         self.averages = copy.deepcopy(list(parm.data for parm in self.parameters()))
         for (name,parm),pavg in zip(self.named_parameters(),self.averages):
             name = name.split('.')[0]
             self.register_buffer(name + '_avg', pavg)
+        
 
     def forward(self,x):
         zx = conv1d(x[:,None,:], self.model_i.wsin_var, stride=self.model_i.stride).pow(2) \
@@ -258,8 +266,8 @@ class CrossStitchModel(torch.nn.Module):
         x1 = F.relu(self.model_n.conv1(torch.log(zx + 10e-15)))
         x2 = F.relu(self.model_i.conv1(torch.log(zx + 10e-15)))
         
-        x1 = self.cross_matrix[0,0,0]*x1 + self.cross_matrix[0,1,0]*x2
-        x2 = self.cross_matrix[0,0,1]*x1 + self.cross_matrix[0,1,1]*x2
+        x1 = self.stitch_matrix1[0,0]*x1 + self.stitch_matrix1[1,0]*x2
+        x2 = self.stitch_matrix1[0,1]*x1 + self.stitch_matrix1[1,1]*x2
 
         # batch size *basechannel * 501 * 25
         x1 = self.model_n.norm1(x1)
@@ -270,8 +278,8 @@ class CrossStitchModel(torch.nn.Module):
 
 
         # Crossing
-        x1 = self.cross_matrix[1,0,0]*x1 + self.cross_matrix[1,1,0]*x2
-        x2 = self.cross_matrix[1,0,1]*x1 + self.cross_matrix[1,1,1]*x2
+        x1 = self.stitch_matrix2[0,0]*x1 + self.stitch_matrix2[1,0]*x2
+        x2 = self.stitch_matrix2[0,1]*x1 + self.stitch_matrix2[1,1]*x2
         
 
         # batchsize * basechannel2 * 501 * 1
