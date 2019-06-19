@@ -236,18 +236,30 @@ class SoftParameterSharing(torch.nn.Module):
 
 
 
+class StitchUnit(torch.nn.Module):
+    def __init__(self):
+        super(StitchUnit,self).__init__()
+        self.stitch_matrix = nn.Parameter(data=torch.eye(2))
+
+    def forward(self,x1,x2):
+        x1 = self.stitch_matrix[0,0]*x1 + self.stitch_matrix[1,0]*x2
+        x2 = self.stitch_matrix[0,1]*x1 + self.stitch_matrix[1,1]*x2
+        return x1,x2
+    
+
+
 class CrossStitchModel(torch.nn.Module):
     def __init__(self,model_n,model_i,levels_to_stitch,avg=.9998):
         super(CrossStitchModel,self).__init__()
         self.model_n = model_n
         self.model_i = model_i
         # self.cross_matrix = Variable(torch.stack([torch.eye(2),torch.eye(2)])
-        self.stitch_matrix1, self.stitch_matrix2 = Variable(torch.eye(2)), Variable(torch.eye(2))
+        self.stitch_unit1, self.stitch_unit2 = StitchUnit(),StitchUnit()
 
         if 1 not in levels_to_stitch:
-            self.stitch_matrix1.requires_grad = False
+            self.stitch_unit1.train(False)
         if 2 not in levels_to_stitch:
-            self.stitch_matrix1.requires_grad = False
+            self.stitch_unit2.train(False)
 
 
         self.avg = avg
@@ -266,8 +278,7 @@ class CrossStitchModel(torch.nn.Module):
         x1 = F.relu(self.model_n.conv1(torch.log(zx + 10e-15)))
         x2 = F.relu(self.model_i.conv1(torch.log(zx + 10e-15)))
         
-        x1 = self.stitch_matrix1[0,0]*x1 + self.stitch_matrix1[1,0]*x2
-        x2 = self.stitch_matrix1[0,1]*x1 + self.stitch_matrix1[1,1]*x2
+        x1,x2 = self.stitch_unit1(x1,x2)
 
         # batch size *basechannel * 501 * 25
         x1 = self.model_n.norm1(x1)
@@ -278,8 +289,8 @@ class CrossStitchModel(torch.nn.Module):
 
 
         # Crossing
-        x1 = self.stitch_matrix2[0,0]*x1 + self.stitch_matrix2[1,0]*x2
-        x2 = self.stitch_matrix2[0,1]*x1 + self.stitch_matrix2[1,1]*x2
+        x1,x2 = self.stitch_unit2(x1,x2)
+
         
 
         # batchsize * basechannel2 * 501 * 1

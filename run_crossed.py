@@ -28,6 +28,7 @@ parser.add_argument('--optim',default='SGD',type=str)
 parser.add_argument('--basechannel',default=16,type=int)
 parser.add_argument('--l1norm',default=0.,type=float)
 parser.add_argument('--stitch_levels',nargs='*',type=int,default = [1,2])
+parser.add_argument('--train_separate',default=0,type=int,choices=[0,1])
 parser.add_argument('--epochs',default=5,type=int)
 parser.add_argument('--model',default='Baseline',type=str,choices = ['Baseline'])
 args = parser.parse_args()
@@ -181,126 +182,21 @@ run_model(model_i,optimizer_i,task="instru",checkpoint=checkpoint_i)
 
 
 
-model_n.train(False)
-model_i.train(False)
 model_tot = CrossStitchModel(model_n=model_n,model_i = model_i,levels_to_stitch = args.stitch_levels)
-optimizer_tot = torch.optim.SGD(model_tot.parameters(), lr = args.lr, momentum=args.mm)
+
+
+params = [
+    {'params': model_tot.stitch_unit1.parameters(), 'lr': args.lr * 100},
+    {'params': model_tot.stitch_unit2.parameters(), 'lr': args.lr * 100}
+]
+if args.train_separate:
+    params += [
+        {'params': model.model_i.parameters()},
+        {'params': model.model_n.parameters()}
+    ]
+
+optimizer_tot = torch.optim.SGD(params, lr = args.lr, momentum=args.mm)
 if args.optim=='Adam':
-    optimizer_tot = torch.optim.Adam(model_tot.parameters(), lr = args.lr)
+    optimizer_tot = torch.optim.Adam(params, lr = args.lr)
 
 run_model(model_tot,optimizer_tot,task="stitch",checkpoint=checkpoint_tot)
-
-
-# l_history_i = []
-# l_history_n = []
-# l_history_tot = []
-# avgp_history_tot = []
-# avgp_history_i = []
-# avgp_history_n = []
-# try:
-#     with train_set, test_set:
-#         print('current task : training stitched network')
-#         task = 'stitched'
-#         print('task\tsquare loss\tavg prec\tnote prec\tinstr prec\ttime\t\tutime')
-#         for epoch in range(args.epochs):
-#             t = time()
-
-#             for i, (x, y) in enumerate(train_loader):
-#                 x, y = Variable(x.cuda(), requires_grad=False), Variable(y.cuda(), requires_grad=False)
-#                 pred = model_tot(x)
-#                 loss_n = L(pred[:,:a],y[:,:a])
-#                 loss_i = L(pred[:,a:],y[:,a:])
-#                 optimizer_tot.zero_grad()
-#                 (loss_i+loss_n).backward()
-#                 optimizer_tot.step()
-#                 model_tot.average_iterates()
-#             t1 = time()
-#             avgp_tot,avgp_n,avgp_i, loss_i,loss_n,loss_tot = 0., 0., 0., 0., 0., 0.
-#             yground = torch.FloatTensor(batch_size*len(test_loader), m)
-#             yhat = torch.FloatTensor(batch_size*len(test_loader), m)
-#             with averages(model_tot):
-#                 for i, (x, y) in enumerate(test_loader):
-#                     x, y = Variable(x.cuda(), requires_grad=False), Variable(y.cuda(), requires_grad=False)
-#                     yhatvar = model_tot(x)
-#                     loss_n += L(yhatvar[:,:a],y[:,:a]).data.item()
-#                     loss_i += L(yhatvar[:,a:],y[:,a:]).data.item()
-#                     loss_tot += L(yhatvar,y).data.item()
-#                     yground[i*batch_size:(i+1)*batch_size,:] = y.data
-#                     yhat[i*batch_size:(i+1)*batch_size,:] = yhatvar.data
-#             avgp_tot = average_precision_score(yground.numpy().flatten(),yhat.numpy().flatten())
-#             avgp_n = average_precision_score(yground[:,:a].numpy().flatten(),yhat[:,:a].numpy().flatten())
-#             avgp_i = average_precision_score(yground[:,a:].numpy().flatten(),yhat[:,a:].numpy().flatten())
-
-#             loss_history_i.append(loss_i/len(test_loader))
-#             loss_history_n.append(loss_n/len(test_loader))
-#             loss_history_tot.append(loss_tot/len(test_loader))
-#             avgp_history_tot.append(avgp_tot)
-#             avgp_history_i.append(avgp_i)
-#             avgp_history_n.append(avgp_n)
-#             torch.save(model_tot.state_dict(), os.path.join(checkpoint_path,checkpoint_i))
-#             print(task+'\t{:2f}\t{:2f}\t{:2f}\t{:2f}\t{:2f}\t{:2f}'.format(loss_history_tot[-1],avgp_history_tot[-1],avgp_history_n[-1],avgp_history_i[-1],time()-t, time()-t1))
-
-
-
-# except KeyboardInterrupt:
-#     print('Graceful Exit')
-# else:
-#     print('Finished')
-
-
-# loss_history_i = []
-# loss_history_n = []
-# loss_history_tot = []
-# avgp_history_tot = []
-# avgp_history_i = []
-# avgp_history_n = []
-
-
-# try:
-#     with train_set, test_set:
-#         task = 'notes'
-#         print('current task : training notes')
-#         print('task\tsquare loss\tavg prec\tnote prec\tinstr prec\ttime\t\tutime')
-#         for epoch in range(args.epochs):
-#             t = time()
-#             train_n = epoch % 2
-
-#             for i, (x, y) in enumerate(train_loader):
-#                 x, y = Variable(x.cuda(), requires_grad=False), Variable(y.cuda(), requires_grad=False)
-#                 pred = model_n(x)
-#                 loss_n = L(pred[:,:a],y[:,:a])
-#                 loss_i = L(pred[:,a:],y[:,a:])
-#                 optimizer_n.zero_grad()
-#                 loss_n.backward()
-#                 optimizer_n.step()
-#                 model_n.average_iterates()
-#             t1 = time()
-#             avgp_tot,avgp_n,avgp_i, loss_i,loss_n,loss_tot = 0., 0., 0., 0., 0., 0.
-#             yground = torch.FloatTensor(batch_size*len(test_loader), m)
-#             yhat = torch.FloatTensor(batch_size*len(test_loader), m)
-#             with averages(model_n):
-#                 for i, (x, y) in enumerate(test_loader):
-#                     x, y = Variable(x.cuda(), requires_grad=False), Variable(y.cuda(), requires_grad=False)
-#                     yhatvar = model_n(x)
-#                     loss_n += L(yhatvar[:,:a],y[:,:a]).data.item()
-#                     loss_i += L(yhatvar[:,a:],y[:,a:]).data.item()
-#                     loss_tot += L(yhatvar,y).data.item()
-#                     yground[i*batch_size:(i+1)*batch_size,:] = y.data
-#                     yhat[i*batch_size:(i+1)*batch_size,:] = yhatvar.data
-#             avgp_tot = average_precision_score(yground.numpy().flatten(),yhat.numpy().flatten())
-#             avgp_n = average_precision_score(yground[:,:a].numpy().flatten(),yhat[:,:a].numpy().flatten())
-#             avgp_i = average_precision_score(yground[:,a:].numpy().flatten(),yhat[:,a:].numpy().flatten())
-
-#             loss_history_i.append(loss_i/len(test_loader))
-#             loss_history_n.append(loss_n/len(test_loader))
-#             loss_history_tot.append(loss_tot/len(test_loader))
-#             avgp_history_tot.append(avgp_tot)
-#             avgp_history_i.append(avgp_i)
-#             avgp_history_n.append(avgp_n)
-#             torch.save(model_n.state_dict(), os.path.join(checkpoint_path,checkpoint_n))
-#             print('\t{:2f}\t{:2f}\t{:2f}\t{:2f}\t{:2f}\t{:2f}'.format(loss_history_tot[-1],avgp_history_tot[-1],avgp_history_n[-1],avgp_history_i[-1],time()-t, time()-t1))
-
-# except KeyboardInterrupt:
-#     print('Graceful Exit')
-# else:
-#     print('Finished')
