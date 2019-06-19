@@ -191,8 +191,8 @@ params = [
 ]
 if args.train_separate:
     params += [
-        {'params': model.model_i.parameters()},
-        {'params': model.model_n.parameters()}
+        {'params': model_tot.model_i.parameters()},
+        {'params': model_tot.model_n.parameters()}
     ]
 
 optimizer_tot = torch.optim.SGD(params, lr = args.lr, momentum=args.mm)
