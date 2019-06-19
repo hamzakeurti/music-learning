@@ -31,6 +31,8 @@ parser.add_argument('--stitch_levels',nargs='*',type=int,default = [1,2])
 parser.add_argument('--train_separate',default=0,type=int,choices=[0,1])
 parser.add_argument('--epochs',default=5,type=int)
 parser.add_argument('--model',default='Baseline',type=str,choices = ['Baseline'])
+parser.add_argument('--load_model_n',default='',type=str,description='Specify checkpoint file from which to load notes model')
+parser.add_argument('--load_model_i',default='',type=str,description='Specify checkpoint file from which to load instruments model')
 args = parser.parse_args()
 
 mode = 'hybrid'
@@ -106,6 +108,8 @@ if args.data_reload==1:
     except IOError as e:
         if e.errno != errno.ENOENT:
             raise
+
+
 optimizer_n = torch.optim.SGD(model_n.parameters(), lr = args.lr, momentum=args.mm)
 if args.optim=='Adam':
     optimizer_n = torch.optim.Adam(model_n.parameters(), lr = args.lr)
@@ -176,10 +180,27 @@ def run_model(model,optimizer,task,checkpoint):
         print('Finished')
 
 
-run_model(model_n,optimizer_n,task="notes",checkpoint=checkpoint_n)
 
-run_model(model_i,optimizer_i,task="instru",checkpoint=checkpoint_i)
 
+
+if not args.load_model_n:
+    run_model(model_n,optimizer_n,task="notes",checkpoint=checkpoint_n)
+else:
+    try:
+        model_n.load_state_dict(torch.load(os.path.join(checkpoint_path,args.load_model_n)))
+    except IOError as e:
+        if e.errno != errno.ENOENT:
+            raise
+
+
+if not args.load_model_i:
+    run_model(model_i,optimizer_i,task="instru",checkpoint=checkpoint_i)
+else:
+    try:
+        model_i.load_state_dict(torch.load(os.path.join(checkpoint_path,args.load_model_i)))
+    except IOError as e:
+        if e.errno != errno.ENOENT:
+            raise
 
 
 model_tot = CrossStitchModel(model_n=model_n,model_i = model_i,levels_to_stitch = args.stitch_levels)
