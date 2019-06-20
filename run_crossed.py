@@ -35,6 +35,8 @@ parser.add_argument('--load_model_n',default='',type=str,help='Specify checkpoin
 parser.add_argument('--load_model_i',default='',type=str,help='Specify checkpoint file from which to load instruments model')
 args = parser.parse_args()
 
+device = torch.device("cuda")
+
 mode = 'hybrid'
 model_dict={'Baseline':Baseline}
 root = '/data/valentin/music-learning/musicnet'
@@ -188,6 +190,7 @@ if not args.load_model_n:
 else:
     try:
         model_n.load_state_dict(torch.load(os.path.join(checkpoint_path,args.load_model_n)))
+        model_n.to(device)
     except IOError as e:
         if e.errno != errno.ENOENT:
             raise
@@ -198,6 +201,7 @@ if not args.load_model_i:
 else:
     try:
         model_i.load_state_dict(torch.load(os.path.join(checkpoint_path,args.load_model_i)))
+        model_i.to(device)
     except IOError as e:
         if e.errno != errno.ENOENT:
             raise
