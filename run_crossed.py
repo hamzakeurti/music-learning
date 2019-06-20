@@ -207,7 +207,7 @@ else:
             raise
 
 
-model_tot = CrossStitchModel(model_n=model_n,model_i = model_i,levels_to_stitch = args.stitch_levels).to(device)
+model_tot = CrossStitchModel(model_n=model_n,model_i = model_i,levels_to_stitch = args.stitch_levels).cuda()
 
 
 params = [
