@@ -177,8 +177,11 @@ def run_model(model,optimizer,task,checkpoint):
                 if task == 'stitch':
                     alpha1 = model_tot.stitch_unit1.stitch_matrix.data
                     alpha2 = model_tot.stitch_unit2.stitch_matrix.data
-                    print(f'{epoch}\t{alpha1[0,0]}\t{alpha1[1,1]}\t{alpha1[1,0]}\t{alpha1[0,1]}')
-                    print(f'{epoch}\t{alpha2[0,0]}\t{alpha2[1,1]}\t{alpha2[1,0]}\t{alpha2[0,1]}')
+                    print(f'\t{alpha1[0,0]}\t{alpha1[0,1]}')
+                    print(f'\t{alpha1[1,0]}\t{alpha1[1,1]}')
+                    print('------')
+                    print(f'\t{alpha2[0,0]}\t{alpha2[0,1]}')
+                    print(f'\t{alpha2[1,0]}\t{alpha2[1,1]}')
                 print('{:.4f}\t{:.3f}\t{:.3f}\t{:.3f}\t{:.2f}\t'.format(l_history_tot[-1],avgp_history_tot[-1],avgp_history_n[-1],avgp_history_i[-1],time()-t)+task)
 
     except KeyboardInterrupt:
