@@ -242,8 +242,8 @@ class StitchUnit(torch.nn.Module):
         self.stitch_matrix = nn.Parameter(data=torch.eye(2))
 
     def forward(self,x1,x2):
-        x1 = (self.stitch_matrix[0,0])*x1 + self.stitch_matrix[1,0]*x2)/(self.stitch_matrix[0,0]) + self.stitch_matrix[1,0])
-        x2 = self.stitch_matrix[0,1]*x1 + self.stitch_matrix[1,1]*x2/(self.stitch_matrix[0,1]) + self.stitch_matrix[1,1])
+        x1 = (self.stitch_matrix[0,0]*x1 + self.stitch_matrix[1,0]*x2)/(self.stitch_matrix[0,0] + self.stitch_matrix[1,0])
+        x2 = self.stitch_matrix[0,1]*x1 + self.stitch_matrix[1,1]*x2/(self.stitch_matrix[0,1] + self.stitch_matrix[1,1])
         return x1,x2
     
 
