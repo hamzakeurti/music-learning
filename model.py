@@ -249,18 +249,12 @@ class StitchUnit(torch.nn.Module):
 
 
 class CrossStitchModel(torch.nn.Module):
-    def __init__(self,model_n,model_i,levels_to_stitch,avg=.9998):
+    def __init__(self,model_n,model_i,avg=.9998):
         super(CrossStitchModel,self).__init__()
         self.model_n = model_n
         self.model_i = model_i
         # self.cross_matrix = Variable(torch.stack([torch.eye(2),torch.eye(2)])
         self.stitch_unit1, self.stitch_unit2 = StitchUnit().cuda(),StitchUnit().cuda()
-
-        if 1 not in levels_to_stitch:
-            self.stitch_unit1.train(False)
-        if 2 not in levels_to_stitch:
-            self.stitch_unit2.train(False)
-
 
         self.avg = avg
         self.averages = copy.deepcopy(list(parm.data for parm in self.parameters()))
