@@ -216,13 +216,13 @@ else:
             raise
 
 
-model_tot = CrossStitchModel(model_n=model_n,model_i = model_i,levels_to_stitch = args.stitch_levels).cuda()
+model_tot = CrossStitchModel(model_n=model_n,model_i = model_i).cuda()
 
 params = []
 
-if 1 in levels_to_stitch:
+if 1 in args.stitch_levels:
     params.append({'params': model_tot.stitch_unit1.parameters(), 'lr': args.lr * 100})
-if 2 in levels_to_stitch:
+if 2 in args.levels_to_stitch:
     params.append({'params': model_tot.stitch_unit2.parameters(), 'lr': args.lr * 100})
 
 if args.train_separate:
