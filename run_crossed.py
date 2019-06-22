@@ -147,7 +147,8 @@ def run_model(model,optimizer,task,checkpoint):
                     if task == 'instru':
                         loss_i.backward()
                     if task == 'stitch':
-                        (loss_i+loss_n).backward()
+                        # (loss_i+loss_n).backward()
+                        loss_n.backward()
                     optimizer.step()
                     model.average_iterates()
                 t1 = time()
