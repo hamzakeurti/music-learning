@@ -270,23 +270,25 @@ class CrossStitchModel(torch.nn.Module):
                    #batch size * 500 * 25
         zx = zx.unsqueeze(1)
         
-        x1 = F.relu(self.model_n.conv1(torch.log(zx + 10e-15)))
-        x2 = F.relu(self.model_i.conv1(torch.log(zx + 10e-15)))
+        x1 = self.model_n.conv1(torch.log(zx + 10e-15))
+        x2 = self.model_i.conv1(torch.log(zx + 10e-15))
         
         x1,x2 = self.stitch_unit1(x1,x2)
 
+        x1,x2 = F.relu(x1),F.relu(x2)
         # batch size *basechannel * 501 * 25
         x1 = self.model_n.norm1(x1)
-        x1 =  F.relu(self.model_n.conv2(x1))
+        x1 = self.model_n.conv2(x1)
 
         x2 = self.model_i.norm1(x2)
-        x2 =  F.relu(self.model_i.conv2(x2))
+        x2 = self.model_i.conv2(x2)
 
 
         # Crossing
         x1,x2 = self.stitch_unit2(x1,x2)
 
-        
+        x1,x2 = F.relu(x1),F.relu(x2)
+
 
         # batchsize * basechannel2 * 501 * 1
         x1 = self.model_n.norm2(x1)
