@@ -30,7 +30,6 @@ parser.add_argument('--l1norm',default=0.,type=float)
 parser.add_argument('--stitch_levels',nargs='*',type=int,default = [1,2])
 parser.add_argument('--train_separate',default=0,type=int,choices=[0,1])
 parser.add_argument('--epochs',default=5,type=int)
-parser.add_argument('--model',default='Baseline',type=str,choices = ['Baseline'])
 parser.add_argument('--load_model_n',default='',type=str,help='Specify checkpoint file from which to load notes model')
 parser.add_argument('--load_model_i',default='',type=str,help='Specify checkpoint file from which to load instruments model')
 args = parser.parse_args()
@@ -38,7 +37,6 @@ print(args)
 device = torch.device("cuda")
 
 mode = 'hybrid'
-model_dict={'Baseline':Baseline}
 root = '/data/valentin/music-learning/musicnet'
 checkpoint_path = './checkpoints'
 checkpoint_n = 'musicnet_'+args.model + '_' + mode + '_n.pt'
