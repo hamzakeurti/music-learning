@@ -299,7 +299,10 @@ class CrossStitchModel(torch.nn.Module):
         # batchsize * basechannel2 * 502 * 2
         x2 = self.model_i.norm2(x2)
         x2 = x2.reshape(self.model_i.batch_size,self.model_i.inshape)
-        return torch.cat((self.model_n.linear(x1)[:,:128], self.model_i.linear(x2)[:,128:]),dim=1)
+
+        x1 = self.model_n.linear(x1)[:,:128]
+        x2 = self.model_i.linear(x2)[:,128:]
+        return torch.cat((x1,x2),dim=1)
     
     def average_iterates(self):
         for parm, pavg in zip(self.parameters(), self.averages):
