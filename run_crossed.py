@@ -36,12 +36,13 @@ args = parser.parse_args()
 print(args)
 device = torch.device("cuda")
 
+model = 'baseline'
 mode = 'hybrid'
 root = '/data/valentin/music-learning/musicnet'
 checkpoint_path = './checkpoints'
-checkpoint_n = 'musicnet_'+args.model + '_' + mode + '_n.pt'
-checkpoint_i = 'musicnet_'+args.model + '_' + mode + '_i.pt'
-checkpoint_tot = 'musicnet_'+args.model + '_' + mode + '_tot.pt'
+checkpoint_n = 'musicnet_'+model + '_' + mode + '_n.pt'
+checkpoint_i = 'musicnet_'+model + '_' + mode + '_i.pt'
+checkpoint_tot = 'musicnet_'+model + '_' + mode + '_tot.pt'
 
 
 try:
