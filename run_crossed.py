@@ -34,7 +34,7 @@ parser.add_argument('--model',default='Baseline',type=str,choices = ['Baseline']
 parser.add_argument('--load_model_n',default='',type=str,help='Specify checkpoint file from which to load notes model')
 parser.add_argument('--load_model_i',default='',type=str,help='Specify checkpoint file from which to load instruments model')
 args = parser.parse_args()
-
+print(args)
 device = torch.device("cuda")
 
 mode = 'hybrid'
@@ -94,8 +94,8 @@ def averages(model):
 
 
 
-model_n = model_dict[args.model](m=m,basechannel = args.basechannel).cuda()
-model_i = model_dict[args.model](m=m,basechannel = args.basechannel).cuda()
+model_n = Baseline(m=m,basechannel = args.basechannel).cuda()
+model_i = Baseline(m=m,basechannel = args.basechannel).cuda()
 
 print(model_n)
 print(model_i)
