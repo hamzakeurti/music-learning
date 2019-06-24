@@ -104,9 +104,9 @@ class Baseline(torch.nn.Module):
         for parm, pavg in zip(self.parameters(), self.averages):
             pavg.mul_(self.avg).add_(1.-self.avg, parm.data)
 
-class HardParameterSharing1(torch.nn.Module):
+class HardParameterSharing2(torch.nn.Module):
     def __init__(self, avg=.9998,stride=512,regions=25,d=4096,k=500,m=139,stft=512,window=16384,batch_size=100,basechannel=128):
-        super(HardParameterSharing1, self).__init__()
+        super(HardParameterSharing2, self).__init__()
 
         self.stride=stride
         self.regions=regions
@@ -137,6 +137,62 @@ class HardParameterSharing1(torch.nn.Module):
         self.norm1 = nn.BatchNorm2d(basechannel)
         self.norm2 = nn.BatchNorm2d(basechannel*2)
     def forward(self, x):
+        # Shared part
+        zx = conv1d(x[:,None,:], self.wsin_var, stride=self.stride).pow(2) \
+           + conv1d(x[:,None,:], self.wcos_var, stride=self.stride).pow(2)
+        zx = zx.unsqueeze(1)
+        shared = F.relu(self.conv1(torch.log(zx + 10e-15)))
+        shared = self.norm1(shared)
+        shared =  F.relu(self.conv2(shared))
+        shared = self.norm2(shared)
+        shared = shared.reshape(self.batch_size,self.inshape)
+        
+        # disjonction
+        x_note = self.linear_note(shared)
+
+        x_inst = self.linear_inst(shared)
+
+        return torch.cat((x_note,x_inst),dim=1)
+
+    def average_iterates(self):
+        for parm, pavg in zip(self.parameters(), self.averages):
+            pavg.mul_(self.avg).add_(1.-self.avg, parm.data)
+
+
+class HardParameterSharing1(torch.nn.Module):
+    def __init__(self, avg=.9998,stride=512,regions=25,d=4096,k=500,m=139,stft=512,window=16384,batch_size=100,basechannel=128):
+        super(HardParameterSharing1, self).__init__()
+
+        self.stride=stride
+        self.regions=regions
+        self.k=k
+        
+        wsin,wcos = create_filters(d,k)
+        with torch.cuda.device(0):
+            self.wsin_var = Variable(torch.from_numpy(wsin).cuda(), requires_grad=False)
+            self.wcos_var = Variable(torch.from_numpy(wcos).cuda(), requires_grad=False)
+        #For stft
+        self.stft=stft
+        self.N = stft//2 + 1
+        self.T = window//(4*stft) + 1
+
+        self.avg = avg
+        self.averages = copy.deepcopy(list(parm.data for parm in self.parameters()))
+        for (name,parm),pavg in zip(self.named_parameters(),self.averages):
+            name = name.split('.')[0]
+            self.register_buffer(name + '_avg', pavg)
+
+        self.batch_size=batch_size
+        self.inshape=251*2*basechannel
+        self.conv1 = nn.Conv2d(1,basechannel,(128,1),stride=(2,1),padding=(64,0))
+        self.conv2_note = nn.Conv2d(basechannel,2*basechannel,(1,25))
+        self.conv2_inst = nn.Conv2d(basechannel,2*basechannel,(1,25))
+        self.linear_note = nn.Linear(self.inshape,128)
+        self.linear_inst = nn.Linear(self.inshape,11)
+        
+        self.norm1 = nn.BatchNorm2d(basechannel)
+        self.norm2 = nn.BatchNorm2d(basechannel*2)
+    def forward(self, x):
         #Shared part
         zx = conv1d(x[:,None,:], self.wsin_var, stride=self.stride).pow(2) \
            + conv1d(x[:,None,:], self.wcos_var, stride=self.stride).pow(2)
@@ -145,12 +201,12 @@ class HardParameterSharing1(torch.nn.Module):
         shared = self.norm1(shared)
 
         #Disjonction
-        x_note =  F.relu(self.conv2(shared))
+        x_note =  F.relu(self.conv2_note(shared))
         x_note = self.norm2(x_note)
         x_note = x_note.reshape(self.batch_size,self.inshape)
         x_note = self.linear_note(x_note)
 
-        x_inst =  F.relu(self.conv2(shared))
+        x_inst =  F.relu(self.conv2_inst(shared))
         x_inst = self.norm2(x_inst)
         x_inst = x_inst.reshape(self.batch_size,self.inshape)
         x_inst = self.linear_inst(x_inst)
@@ -160,6 +216,7 @@ class HardParameterSharing1(torch.nn.Module):
     def average_iterates(self):
         for parm, pavg in zip(self.parameters(), self.averages):
             pavg.mul_(self.avg).add_(1.-self.avg, parm.data)
+
 
 class SoftParameterSharing(torch.nn.Module):
     def __init__(self, avg=.9998,stride=512,regions=25,d=4096,k=500,m=139,stft=512,window=16384,batch_size=100,basechannel=128):
@@ -234,40 +291,18 @@ class SoftParameterSharing(torch.nn.Module):
         for parm, pavg in zip(self.parameters(), self.averages):
             pavg.mul_(self.avg).add_(1.-self.avg, parm.data)
 
-
-
-class StitchUnit(torch.nn.Module):
-    def __init__(self):
-        super(StitchUnit,self).__init__()
-        self.stitch_matrix = nn.Parameter(data=torch.eye(2))
-
-    def forward(self,x1,x2):
-        x1 = self.stitch_matrix[0,0]*x1 + self.stitch_matrix[1,0]*x2
-        x2 = self.stitch_matrix[0,1]*x1 + self.stitch_matrix[1,1]*x2
-        return x1,x2
-    
-
-
 class CrossStitchModel(torch.nn.Module):
-    def __init__(self,model_n,model_i,levels_to_stitch,avg=.9998):
+    def __init__(self,model_n,model_i,avg=.9998):
         super(CrossStitchModel,self).__init__()
         self.model_n = model_n
         self.model_i = model_i
-        # self.cross_matrix = Variable(torch.stack([torch.eye(2),torch.eye(2)])
-        self.stitch_unit1, self.stitch_unit2 = StitchUnit(),StitchUnit()
-
-        if 1 not in levels_to_stitch:
-            self.stitch_unit1.train(False)
-        if 2 not in levels_to_stitch:
-            self.stitch_unit2.train(False)
-
+        self.cross_matrix = Variable(torch.rand([2,2]))
 
         self.avg = avg
         self.averages = copy.deepcopy(list(parm.data for parm in self.parameters()))
         for (name,parm),pavg in zip(self.named_parameters(),self.averages):
             name = name.split('.')[0]
             self.register_buffer(name + '_avg', pavg)
-        
 
     def forward(self,x):
         zx = conv1d(x[:,None,:], self.model_i.wsin_var, stride=self.model_i.stride).pow(2) \
@@ -278,7 +313,6 @@ class CrossStitchModel(torch.nn.Module):
         x1 = F.relu(self.model_n.conv1(torch.log(zx + 10e-15)))
         x2 = F.relu(self.model_i.conv1(torch.log(zx + 10e-15)))
         
-        x1,x2 = self.stitch_unit1(x1,x2)
 
         # batch size *basechannel * 501 * 25
         x1 = self.model_n.norm1(x1)
@@ -289,8 +323,8 @@ class CrossStitchModel(torch.nn.Module):
 
 
         # Crossing
-        x1,x2 = self.stitch_unit2(x1,x2)
-
+        x1 = self.cross_matrix[0,0]*x1 + self.cross_matrix[1,0]*x2
+        x2 = self.cross_matrix[0,1]*x1 + self.cross_matrix[1,1]*x2
         
 
         # batchsize * basechannel2 * 501 * 1
