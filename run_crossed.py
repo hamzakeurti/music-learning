@@ -30,18 +30,19 @@ parser.add_argument('--l1norm',default=0.,type=float)
 parser.add_argument('--stitch_levels',nargs='*',type=int,default = [1,2])
 parser.add_argument('--train_separate',default=0,type=int,choices=[0,1])
 parser.add_argument('--epochs',default=5,type=int)
-parser.add_argument('--model',default='Baseline',type=str,choices = ['Baseline'])
-parser.add_argument('--load_model_n',default='',type=str,description='Specify checkpoint file from which to load notes model')
-parser.add_argument('--load_model_i',default='',type=str,description='Specify checkpoint file from which to load instruments model')
+parser.add_argument('--load_model_n',default='',type=str,help='Specify checkpoint file from which to load notes model')
+parser.add_argument('--load_model_i',default='',type=str,help='Specify checkpoint file from which to load instruments model')
 args = parser.parse_args()
+print(args)
+device = torch.device("cuda")
 
+model = 'baseline'
 mode = 'hybrid'
-model_dict={'Baseline':Baseline}
 root = '/data/valentin/music-learning/musicnet'
 checkpoint_path = './checkpoints'
-checkpoint_n = 'musicnet_'+args.model + '_' + mode + '_n.pt'
-checkpoint_i = 'musicnet_'+args.model + '_' + mode + '_i.pt'
-checkpoint_tot = 'musicnet_'+args.model + '_' + mode + '_tot.pt'
+checkpoint_n = 'musicnet_'+model + '_' + mode + '_n.pt'
+checkpoint_i = 'musicnet_'+model + '_' + mode + '_i.pt'
+checkpoint_tot = 'musicnet_'+model + '_' + mode + '_tot.pt'
 
 
 try:
@@ -92,8 +93,8 @@ def averages(model):
 
 
 
-model_n = model_dict[args.model](m=m,basechannel = args.basechannel).cuda()
-model_i = model_dict[args.model](m=m,basechannel = args.basechannel).cuda()
+model_n = Baseline(m=m,basechannel = args.basechannel).cuda()
+model_i = Baseline(m=m,basechannel = args.basechannel).cuda()
 
 print(model_n)
 print(model_i)
@@ -145,7 +146,8 @@ def run_model(model,optimizer,task,checkpoint):
                     if task == 'instru':
                         loss_i.backward()
                     if task == 'stitch':
-                        (loss_i+loss_n).backward()
+                        (loss_i+2*loss_n).backward()
+                        # loss_n.backward()
                     optimizer.step()
                     model.average_iterates()
                 t1 = time()
@@ -172,6 +174,14 @@ def run_model(model,optimizer,task,checkpoint):
                 avgp_history_i.append(avgp_i)
                 avgp_history_n.append(avgp_n)
                 torch.save(model.state_dict(), os.path.join(checkpoint_path,checkpoint))
+                if task == 'stitch':
+                    alpha1 = model_tot.stitch_unit1.stitch_matrix.data
+                    alpha2 = model_tot.stitch_unit2.stitch_matrix.data
+                    print(f'\t{alpha1[0,0]}\t{alpha1[0,1]}')
+                    print(f'\t{alpha1[1,0]}\t{alpha1[1,1]}')
+                    print('------')
+                    print(f'\t{alpha2[0,0]}\t{alpha2[0,1]}')
+                    print(f'\t{alpha2[1,0]}\t{alpha2[1,1]}')
                 print('{:.4f}\t{:.3f}\t{:.3f}\t{:.3f}\t{:.2f}\t'.format(l_history_tot[-1],avgp_history_tot[-1],avgp_history_n[-1],avgp_history_i[-1],time()-t)+task)
 
     except KeyboardInterrupt:
@@ -188,6 +198,7 @@ if not args.load_model_n:
 else:
     try:
         model_n.load_state_dict(torch.load(os.path.join(checkpoint_path,args.load_model_n)))
+        model_n.to(device)
     except IOError as e:
         if e.errno != errno.ENOENT:
             raise
@@ -198,18 +209,21 @@ if not args.load_model_i:
 else:
     try:
         model_i.load_state_dict(torch.load(os.path.join(checkpoint_path,args.load_model_i)))
+        model_i.to(device)
     except IOError as e:
         if e.errno != errno.ENOENT:
             raise
 
 
-model_tot = CrossStitchModel(model_n=model_n,model_i = model_i,levels_to_stitch = args.stitch_levels)
+model_tot = CrossStitchModel(model_n=model_n,model_i = model_i).cuda()
 
+params = []
 
-params = [
-    {'params': model_tot.stitch_unit1.parameters(), 'lr': args.lr * 100},
-    {'params': model_tot.stitch_unit2.parameters(), 'lr': args.lr * 100}
-]
+if 1 in args.stitch_levels:
+    params.append({'params': model_tot.stitch_unit1.parameters(), 'lr': args.lr * 100})
+if 2 in args.stitch_levels:
+    params.append({'params': model_tot.stitch_unit2.parameters(), 'lr': args.lr * 100})
+
 if args.train_separate:
     params += [
         {'params': model_tot.model_i.parameters()},
