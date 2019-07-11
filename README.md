@@ -1,3 +1,3 @@
-# pytorch_musicnet
+Based on the Musicnet dataset, this project aims at labelling the musical notes and instruments played within a short time window.
 
-This repository provides PyTorch DataSet and DataLoader classes for MusicNet (musicnet.py) and two Jupyter that demonstrate how to use this dataset to train a simple MusicNet model using PyTorch. The DataSet class provides a built-in download method to acquire MusicNet. Note that MusicNet expands to ~50Gb uncompressed. The download process leaves behind temporary files that can be safely removed if necessary to save space: the musicnet.tar.gz file, and the raw ".wav" files in the data directories. MusicNet models will often optimize more efficiently if you can afford to load the entire dataset into memory (~21Gb of RAM). If you don't have this much RAM, you can set mmap=False in the DataSet class to load data directly from disk.
+We mainly explored approaches from the Multi-Task Learning paradigm, to try and see how information captured through one task can help the other task perform better.
